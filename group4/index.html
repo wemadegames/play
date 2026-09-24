@@ -35,6 +35,8 @@
   .btn{ margin-top:4px; padding:11px 24px; min-height:44px; border:none; border-radius:8px; background:var(--accent);
     color:#231a00; font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; }
   .foot{ font-size:12px; color:var(--muted); text-align:center; line-height:1.5; }
+  .ctl{ display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:12px; color:var(--muted); }
+  .ctl b{ color:var(--text); font-weight:600; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
   .save{ display:flex; gap:8px; width:100%; max-width:240px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
@@ -78,6 +80,14 @@
       <div id="overlay" class="overlay">
         <h1>Football Fusion</h1>
         <p>You are the Buffalo QB. R/Q set power (max 80), F throws. Then you are the receiver: catch with F, run with WASD to the end zone, and press T to tackle a defender out of the way. Touchdown = 6, then K for the extra point.</p>
+        <div class="ctl">
+          <span><b>Power</b> R / Q</span>
+          <span><b>Throw &amp; catch</b> F</span>
+          <span><b>Run</b> WASD</span>
+          <span><b>Tackle</b> T</span>
+          <span><b>Kick</b> K</span>
+          <span><b>Start</b> Enter</span>
+        </div>
         <button id="start" class="btn">Hike</button>
         <p class="hint">&hellip;or press Enter</p>
         <div id="saveRow" class="save" hidden>
