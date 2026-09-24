@@ -9,7 +9,7 @@ Four browser games designed by middle-school students and built with AI, then co
 | 1 | Escape the Police | `group1/` |
 | 2 | Leave the Maze | `group2/` |
 | 3 | Spellbound Academy | `group3/` |
-| 4 | Gridiron Showdown | `group4/` |
+| 4 | Football Fusion | `group4/` |
 
 ## Play locally
 
