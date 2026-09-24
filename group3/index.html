@@ -59,6 +59,7 @@
   .overlay h2{ margin:0; font-size:26px; } .overlay p{ margin:0; color:var(--muted); max-width:32ch; }
   .btn{ padding:12px 28px; min-height:44px; border:none; border-radius:10px; background:var(--accent); color:#231a00;
     font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; }
+  .ctl-line{ margin:0; text-align:center; font-size:12px; color:var(--muted); }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
   .save{ display:flex; gap:8px; width:100%; max-width:240px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
@@ -119,6 +120,7 @@
       <button class="spell" data-act="heal">✨ Mend<small>heal yourself</small></button>
       <button class="spell death" id="deathBtn" data-act="death">☠️ Death Spell (1)<small>one use · instant win · answers the curse</small></button>
     </div>
+    <p class="ctl-line">Tap a spell to cast it. When the curse warning appears, only your Death Spell saves you.</p>
   </section>
 </div>
 
