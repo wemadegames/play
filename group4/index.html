@@ -38,7 +38,7 @@
   .ctl{ display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:12px; color:var(--muted); }
   .ctl b{ color:var(--text); font-weight:600; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
-  .save{ display:flex; gap:8px; width:100%; max-width:240px; }
+  .save{ display:flex; gap:8px; width:100%; max-width:300px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
     background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
   .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#231a00;
@@ -48,6 +48,8 @@
   .lbh{ text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; }
   .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid var(--border); }
   .lbrow.empty{ justify-content:center; color:var(--muted); }
+  .skip{ padding:0 12px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:transparent;
+    color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
 
   /* on-screen touch controls (phones), swap by game phase */
   .touch{ display:flex; flex-direction:column; align-items:center; gap:8px; }
@@ -77,24 +79,18 @@
     <div id="msg">Set your power, then press F to throw</div>
     <div class="stage">
       <canvas id="game"></canvas>
-      <div id="overlay" class="overlay">
+      <div id="overlay" class="overlay hidden">
         <h1>Football Fusion</h1>
-        <p>You are the Buffalo QB. R/Q set power (max 80), F throws. Then you are the receiver: catch with F, run with WASD to the end zone, and press T to tackle a defender out of the way. Touchdown = 6, then K for the extra point.</p>
-        <div class="ctl">
-          <span><b>Power</b> R / Q</span>
-          <span><b>Throw &amp; catch</b> F</span>
-          <span><b>Run</b> WASD</span>
-          <span><b>Tackle</b> T</span>
-          <span><b>Kick</b> K</span>
-          <span><b>Start</b> Enter</span>
-        </div>
-        <button id="start" class="btn">Hike</button>
-        <p class="hint">&hellip;or press Enter</p>
+        <p></p>
         <div id="saveRow" class="save" hidden>
-          <input id="nameIn" maxlength="8" placeholder="Your name" aria-label="Your name">
+          <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name for the top 5">
           <button id="saveBtn" class="btn2">Save</button>
-      </div>
+          <button id="skipBtn" class="skip">Skip</button>
+        </div>
+        <p id="saveHint" class="hint" hidden>Enter saves &middot; Esc skips</p>
         <div id="lbPanel" class="lb"></div>
+        <button id="start" class="btn">Play again</button>
+        <p class="hint">&hellip;or press Enter</p>
       </div>
     </div>
     <div class="touch" id="touch">
@@ -117,7 +113,7 @@
         <button class="big" data-k="k">Kick</button>
       </div>
     </div>
-    <p class="foot">R/Q power &middot; F throw &amp; catch &middot; WASD run &middot; T tackle &middot; K kick &middot; Enter starts a play.</p>
+    <p class="foot"><b>Power</b> R/Q &middot; <b>Throw &amp; catch</b> F &middot; <b>Run</b> WASD &middot; <b>Tackle</b> T &middot; <b>Kick</b> K &middot; TD = 6, get tackled and the game ends</p>
   </div>
   <aside class="board"><span class="board-lbl">Score</span><span class="board-num" id="scoreR">0</span></aside>
 </div>
@@ -140,6 +136,9 @@ function renderLB(){ const a=getLB();
     (a.length ? a.map((r,i)=>`<div class="lbrow"><span>${i+1}. ${r.name}</span><span>${r.score}</span></div>`).join('')
               : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
 let pendingScore=0, saved=false;
+const fitsTop5 = sc => { const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
+function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el('nameIn').blur(); }
+const nextPlay = (t) => { msg(t+' Next play...'); setTimeout(()=>newPlay(true), 1200); };  // no menu between plays
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 let state='menu', power=80, score=0, tackleCd=0, last=0, wantCatch=false, explodeUntil=0, defSpeed=DEF, heat=1;
@@ -156,7 +155,7 @@ const makeMates = () => [
 
 function newPlay(keepScore){
   if(!keepScore){ score=0; defSpeed=DEF; heat=1; el('heat').textContent=heat; }
-  el('saveRow').hidden=true;
+  closeSave();
   state='throw'; power=80; tackleCd=0; wantCatch=false;
   qb={x:W/2, y:H-46};
   wr={x:W/2, y:H-92};
@@ -173,7 +172,8 @@ const over = (title,text,btn)=>{ const o=el('overlay'); o.classList.remove('hidd
   o.querySelector('h1').textContent=title; o.querySelector('p').textContent=text; el('start').textContent=btn;
   pendingScore=score; saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save';
   el('nameIn').disabled=false; el('nameIn').value='';
-  el('saveRow').hidden=false; renderLB(); };
+  const top=fitsTop5(pendingScore); el('saveRow').hidden=!top; el('saveHint').hidden=!top; renderLB();
+  if(top && !matchMedia('(pointer:coarse)').matches) el('nameIn').focus(); };
 
 const lead = () => (power-65)/15*100 + 80;    // higher power throws deeper
 
@@ -206,7 +206,7 @@ function key(k){
         else msg('No one close enough to tackle.'); } }
   } else if(state==='extra'){
     if(k==='k'){ if(Math.random()<0.8){ score++; setScore(); msg('The kick is GOOD! +1'); } else msg('The kick sails wide.');
-      state='done'; setTimeout(()=>over('Great drive!','Final score: '+score+'. Line up for another play.','Next play'),700); }
+      state='done'; setTimeout(()=>nextPlay('Score: '+score+'.'),500); }
   }
 }
 const MOVE={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],arrowup:[0,-1],arrowdown:[0,1],arrowleft:[-1,0],arrowright:[1,0]};
@@ -215,8 +215,10 @@ addEventListener('keydown',e=>{
   if(!el('overlay').classList.contains('hidden') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); el('start').click(); return; }
   const k=e.key.toLowerCase(); if(k===' '){e.preventDefault();} if(k in MOVE||['r','q','f','t','k'].includes(k)){ e.preventDefault(); key(k); } });
 el('saveBtn').addEventListener('click', ()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore);
-  saved=true; el('saveBtn').disabled=true; el('saveBtn').textContent='Saved'; el('nameIn').disabled=true; renderLB(); });
-el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } e.stopPropagation(); });
+  saved=true; closeSave(); renderLB(); });
+el('skipBtn').addEventListener('click', closeSave);
+el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); }
+  else if(e.key==='Escape'){ e.preventDefault(); closeSave(); } e.stopPropagation(); });
 
 function update(dt){
   if(state==='throw'){ wr.y-=1.4; wr.x+=Math.sin(performance.now()/300)*0.6; }
@@ -225,7 +227,7 @@ function update(dt){
     wr.x+=(ball.to.x-wr.x)*0.08; wr.y+=(ball.to.y-wr.y)*0.08;
     if(ball.t>=1){
       if(wantCatch && dist(wr,ball.to)<34){ state='run'; msg('CAUGHT! Run to the end zone (WASD).'); }
-      else { state='done'; setTimeout(()=>over('Incomplete','No catch that time. Reset and try again.','Next play'),500); }
+      else { state='done'; nextPlay('Incomplete.'); }
     }
   }
   else if(state==='run'){
@@ -240,7 +242,7 @@ function update(dt){
   }
   else if(state==='explode'){
     for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=40*dt; p.life-=dt; }
-    if(performance.now()>explodeUntil){ state='done'; over('Tackled!','You blew up on the hit. Line up again.','Next play'); }
+    if(performance.now()>explodeUntil){ state='done'; over('Tackled!','Game over. Final score: '+score+'.','Play again'); }
   }
 }
 
@@ -293,12 +295,13 @@ function draw(){
 }
 
 function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state!=='menu') update(dt); draw(); syncControls(); requestAnimationFrame(loop); }
-el('start').addEventListener('click',()=>{ const cont = el('start').textContent==='Next play'; newPlay(cont); });
+el('start').addEventListener('click',()=> newPlay(false));
 
 // idle backdrop
 qb={x:W/2,y:H-46}; wr={x:W/2,y:H-92}; ball={x:0,y:0,live:false}; defs=makeDefs(); mates=makeMates();
 line=[]; for(let i=0;i<10;i++) line.push({x:24+i*34,y:H-24});
 renderLB();
+newPlay(false);                                  // straight into the first play, no menu
 requestAnimationFrame(loop);
 </script>
 </body>
