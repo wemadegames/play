@@ -38,7 +38,7 @@
   .tok{ font-size:13px; color:var(--boost); }
 
   /* save-score row */
-  .save{ display:flex; gap:8px; width:100%; max-width:240px; }
+  .save{ display:flex; gap:8px; width:100%; max-width:300px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
     background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
   .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#08210c;
@@ -65,6 +65,11 @@
   .ctl{ display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:12px; color:var(--muted); }
   .ctl b{ color:var(--text); font-weight:600; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
+  .tip{ position:absolute; left:0; right:0; bottom:10px; text-align:center; font-size:12px; color:#fff;
+    text-shadow:0 1px 2px #000; pointer-events:none; }
+  .skip{ padding:0 12px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:transparent;
+    color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
+  .diff.out{ justify-content:center; } .dbtn:disabled{ opacity:.5; cursor:default; }
 
   /* mobile */
   @media(min-width:769px){ .pad{ display:none; } }
@@ -76,28 +81,25 @@
   <div class="hud"><span>Level <b id="lvl">1</b>/5</span><span>Score <b id="score">0</b></span><span>Cops <b id="cops">1</b></span><span id="mode">Maze</span></div>
   <div class="stage">
     <canvas id="game"></canvas>
-    <div id="overlay" class="overlay">
+    <div id="tip" class="tip">Press an arrow (or tap &#9650;) to start</div>
+    <div id="overlay" class="overlay hidden">
       <h1 id="ovTitle">Leave the Maze</h1>
-      <p id="ovText">The cops only move when you move, so think each step. Freeze them or dash past them, escape 5 mazes, and finish to earn tokens.</p>
-      <div class="ctl">
-        <span><b>Move</b> WASD / arrows</span>
-        <span><b>Freeze</b> Q</span>
-        <span><b>Boost</b> E</span>
-        <span><b>Start</b> Enter</span>
-      </div>
-      <div id="diffRow" class="diff">
-        <button class="dbtn on" data-diff="easy">Easy</button>
-        <button class="dbtn" data-diff="hard">Hard</button>
-      </div>
+      <p id="ovText"></p>
       <div id="tokLine" class="tok"></div>
       <div id="saveRow" class="save" hidden>
-        <input id="nameIn" maxlength="8" placeholder="Your name" aria-label="Your name">
+        <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name for the top 5">
         <button id="saveBtn" class="btn2">Save</button>
+        <button id="skipBtn" class="skip">Skip</button>
       </div>
+      <p id="saveHint" class="hint" hidden>Enter saves &middot; Esc skips</p>
       <div id="lbPanel" class="lb"></div>
       <button id="start" class="btn">Play</button>
       <p class="hint">&hellip;or press Enter</p>
     </div>
+  </div>
+  <div id="diffRow" class="diff out">
+    <button class="dbtn on" data-diff="easy">Easy</button>
+    <button class="dbtn" data-diff="hard">Hard</button>
   </div>
   <div class="abil">
     <button id="freezeBtn" class="abtn" disabled>❄ Freeze (2)</button>
@@ -107,7 +109,7 @@
     <button class="u" data-act="up">▲</button><button class="l" data-act="left">◀</button>
     <button class="d" data-act="down">▼</button><button class="r" data-act="right">▶</button>
   </div>
-  <p class="foot">WASD or arrows to move &middot; Q freeze &middot; E boost &middot; Enter starts.</p>
+  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Freeze</b> Q &middot; <b>Boost</b> E &middot; cops only move when you move &middot; escape 5 mazes</p>
 </div>
 
 <script>
@@ -133,6 +135,10 @@ function renderLB(){ const a=getLB(diff);
 }
 const getTok = () => { try{ return +localStorage.getItem(TOK)||0; }catch(e){ return 0; } };
 const addTok = n => { try{ localStorage.setItem(TOK, getTok()+n); }catch(e){} };
+let fresh=true;
+const fitsTop5 = sc => { const a=getLB(diff); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
+function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el('nameIn').blur(); }
+const lockDiff = on => document.querySelectorAll('.dbtn').forEach(b=> b.disabled=on);
 
 // ---- maze generation (DFS) ----
 function genMaze(cols,rows){
@@ -201,15 +207,16 @@ function loadJail(){ returnLevel=lvl; mode='jail'; el('mode').textContent='JAIL'
 function setOverlay(modeName, title, text){
   const ov=el('overlay'); ov.classList.remove('hidden');
   el('ovTitle').textContent=title; el('ovText').textContent=text;
-  el('diffRow').hidden = modeName==='pause';
   el('lbPanel').hidden = modeName==='pause';
   el('tokLine').hidden = modeName==='pause';
-  el('saveRow').hidden = modeName!=='result';
+  closeSave(); lockDiff(modeName==='pause');
   el('start').textContent = modeName==='menu' ? 'Play' : (modeName==='pause' ? 'Continue' : 'Play again');
   resetOnStart = modeName!=='pause';
   if(modeName!=='pause'){ el('tokLine').textContent='🪙 '+getTok()+' tokens earned'; renderLB(); }
   if(modeName==='result'){ saved=false; const sb=el('saveBtn'), ni=el('nameIn');
-    sb.disabled=false; sb.textContent='Save'; ni.disabled=false; ni.value=''; }
+    sb.disabled=false; sb.textContent='Save'; ni.disabled=false; ni.value='';
+    if(fitsTop5(pendingScore)){ el('saveRow').hidden=false; el('saveHint').hidden=false;
+      if(!matchMedia('(pointer:coarse)').matches) ni.focus(); } }
   running=false; updateAbil();
 }
 
@@ -228,6 +235,7 @@ function reachedExit(){
 
 // ---- movement: the cops advance only when you actually move ----
 function tryMove(dir){
+  if(fresh) el('start').click();                         // first arrow starts the run, no menu
   if(!running) return;
   const c=m.cells[m.idx(player.x,player.y)];
   let moved=false;
@@ -248,8 +256,9 @@ function useBoost(){ if(!running||boostCharges<=0) return; boostCharges--; boost
 
 const KEYS={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
 addEventListener('keydown',e=>{
-  if(e.target && e.target.tagName==='INPUT'){ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } return; }
-  if(!el('overlay').classList.contains('hidden') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); el('start').click(); return; }
+  if(e.target && e.target.tagName==='INPUT'){ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeSave(); } return; }
+  if((fresh || !el('overlay').classList.contains('hidden')) && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); el('start').click(); return; }
   const a=KEYS[e.key]; if(a){ e.preventDefault(); tryMove(a); return; }
   if(e.key==='q'||e.key==='Q') useFreeze();
   else if(e.key==='e'||e.key==='E') useBoost();
@@ -259,10 +268,11 @@ document.querySelectorAll('.pad button').forEach(b=>{ const go=e=>{ e.preventDef
 el('freezeBtn').onclick=useFreeze; el('boostBtn').onclick=useBoost;
 
 // difficulty + save
-document.querySelectorAll('.dbtn').forEach(b=> b.onclick=()=>{ diff=b.dataset.diff;
+document.querySelectorAll('.dbtn').forEach(b=> b.onclick=()=>{ if(running) return; diff=b.dataset.diff;
   document.querySelectorAll('.dbtn').forEach(x=>x.classList.toggle('on', x===b)); renderLB(); });
 el('saveBtn').onclick=()=>{ if(saved) return; addScore(diff, el('nameIn').value.trim(), pendingScore);
-  saved=true; el('saveBtn').disabled=true; el('saveBtn').textContent='Saved'; el('nameIn').disabled=true; renderLB(); };
+  saved=true; closeSave(); renderLB(); };
+el('skipBtn').onclick=closeSave;
 
 // ---- cops + draw ----
 function stepCops(){
@@ -292,6 +302,7 @@ function draw(){
 function loop(){ if(running) draw(); requestAnimationFrame(loop); }
 
 el('start').addEventListener('click',()=>{
+  fresh=false; el('tip').hidden=true; closeSave(); lockDiff(true);
   el('overlay').classList.add('hidden');
   if(resetOnStart) score=0;
   loadLevel(pendingLevel||1); pendingLevel=0; updateHud(); running=true; updateAbil(); last=performance.now();
