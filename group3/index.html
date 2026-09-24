@@ -61,7 +61,7 @@
     font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; }
   .ctl-line{ margin:0; text-align:center; font-size:12px; color:var(--muted); }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
-  .save{ display:flex; gap:8px; width:100%; max-width:240px; }
+  .save{ display:flex; gap:8px; width:100%; max-width:300px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
     background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
   .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#231a00;
@@ -71,6 +71,10 @@
   .lbh{ text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; }
   .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid var(--border); }
   .lbrow.empty{ justify-content:center; color:var(--muted); }
+  .skip{ padding:0 12px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:transparent;
+    color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
+  .pickown{ align-self:center; background:none; border:none; color:var(--muted); font-family:inherit; font-size:12px;
+    text-decoration:underline; cursor:pointer; padding:10px; min-height:44px; }
   @media(max-width:420px){ .grid{ grid-template-columns:1fr; } }
 </style>
 </head>
@@ -78,10 +82,10 @@
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
   <div class="title"><div class="eyebrow">Spellbound</div><h1>Spellbound Academy</h1></div>
-  <p class="intro">Pick a wizard, a rival, and a wand, then duel. Tap a spell to cast. The enemy regrows a little more health every round - finish it fast.</p>
+  <p class="intro">You're already in the duel. Tap a spell to cast. The enemy regrows a little more health every round - finish it fast.</p>
 
   <!-- Step 1: character -->
-  <section id="s-char">
+  <section id="s-char" hidden>
     <p class="step-label">1. Choose your wizard</p>
     <div class="grid" id="charGrid"></div>
   </section>
@@ -121,6 +125,7 @@
       <button class="spell death" id="deathBtn" data-act="death">☠️ Death Spell (1)<small>one use · instant win · answers the curse</small></button>
     </div>
     <p class="ctl-line">Tap a spell to cast it. When the curse warning appears, only your Death Spell saves you.</p>
+    <button class="pickown" onclick="location.search='?pick'">Pick your own wizard, rival and wand</button>
   </section>
 </div>
 
@@ -128,11 +133,13 @@
   <h2 id="endTitle">Victory</h2>
   <p id="endText"></p>
   <div id="saveRow" class="save" hidden>
-    <input id="nameIn" maxlength="8" placeholder="Your name" aria-label="Your name">
+    <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name for the top 5">
     <button id="saveBtn" class="btn2">Save</button>
+    <button id="skipBtn" class="skip">Skip</button>
   </div>
+  <p id="saveHint" class="hint" hidden>Enter saves &middot; Esc skips</p>
   <div id="lbPanel" class="lb"></div>
-  <button class="btn" onclick="location.reload()">Play again</button>
+  <button class="btn" onclick="playAgain()">Play again</button>
   <p class="hint">&hellip;or press Enter</p>
 </div>
 
@@ -168,6 +175,9 @@ function renderLB(){ const a=getLB();
     (a.length ? a.map((r,i)=>`<div class="lbrow"><span>${i+1}. ${r.name}</span><span>${r.score}</span></div>`).join('')
               : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
 let pendingScore=0, saved=false;
+const fitsTop5 = sc => { const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
+function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el('nameIn').blur(); }
+const playAgain = () => { location.search ? location.search='' : location.reload(); };
 const rnd = n => Math.floor(Math.random()*n);
 let G = { char:null, foe:null, wand:null };
 let youHP, youMax, foeHP, foeMax, youShield, deathLeft=1, foeDeathLeft=1, foeCharging=false, turn=0, busy=false, done=false, lastRegen=0;
@@ -263,15 +273,23 @@ function finish(win, text){
   pendingScore = (win?100:0) + Math.max(0, foeMax - Math.max(0,foeHP));
   saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save';
   el('nameIn').disabled=false; el('nameIn').value='';
-  el('saveRow').hidden=false; renderLB();
+  const top=fitsTop5(pendingScore); el('saveRow').hidden=!top; el('saveHint').hidden=!top; renderLB();
   el('end').hidden=false;
+  if(top && !matchMedia('(pointer:coarse)').matches) el('nameIn').focus();
 }
 el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore);
-  saved=true; el('saveBtn').disabled=true; el('saveBtn').textContent='Saved'; el('nameIn').disabled=true; renderLB(); };
+  saved=true; closeSave(); renderLB(); };
+el('skipBtn').onclick=closeSave;
 addEventListener('keydown', e=>{
-  if(e.target && e.target.tagName==='INPUT'){ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } return; }
-  if(!el('end').hidden && e.key==='Enter'){ e.preventDefault(); location.reload(); }
+  if(e.target && e.target.tagName==='INPUT'){ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeSave(); } return; }
+  if(!el('end').hidden && e.key==='Enter'){ e.preventDefault(); playAgain(); }
 });
+
+// start straight in a duel with a random wizard, rival and wand (?pick shows the picker instead)
+const any = o => { const k=Object.keys(o); return k[rnd(k.length)]; };
+if(location.search.includes('pick')) show('s-char');
+else { G.char=any(CHARS); G.foe=any(FOES); G.wand=any(WANDS); startBattle(); }
 </script>
 </body>
 </html>
