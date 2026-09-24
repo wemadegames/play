@@ -7,12 +7,14 @@
 <style>
   :root{ --bg:#0d0f1a; --panel:#161a2b; --text:#eef1ff; --muted:#8b93b6; --accent:#ffd23f; --border:#28304d; }
   *{ box-sizing:border-box; }
+  [hidden]{ display:none!important; }
   body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
     background:var(--bg); color:var(--text); font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
   .wrap{ width:100%; max-width:440px; display:flex; flex-direction:column; gap:10px; }
-  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:8px 10px 8px 0;
-    font-size:12px; text-decoration:none; color:var(--muted); }
-  .back:hover{ color:var(--text); }
+  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:10px 14px; min-height:44px;
+    font-size:12px; text-decoration:none; color:var(--muted);
+    border:1px solid var(--border); border-radius:8px; background:var(--panel); }
+  .back:hover{ color:var(--text); border-color:var(--muted); }
   .hud{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
   .hud .label{ color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
   .hud b{ color:var(--accent); }
@@ -33,7 +35,18 @@
   .fire{ margin-top:6px; width:100%; padding:11px; border:none; border-radius:8px; background:#e2413b; color:#fff;
     font-weight:700; font-family:inherit; font-size:15px; cursor:pointer; }
   .fire.hidden{ display:none; }
-  .foot{ font-size:11px; color:var(--muted); text-align:center; }
+  .foot{ font-size:12px; color:var(--muted); text-align:center; }
+  .hint{ margin:0; font-size:11px; color:var(--muted); }
+  .save{ display:flex; gap:8px; width:100%; max-width:240px; }
+  .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
+    background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
+  .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#1a1200;
+    font-weight:700; font-family:inherit; font-size:14px; cursor:pointer; }
+  .btn2:disabled{ opacity:.5; }
+  .lb{ width:100%; max-width:240px; font-size:12px; text-align:left; }
+  .lbh{ text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; }
+  .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid var(--border); }
+  .lbrow.empty{ justify-content:center; color:var(--muted); }
   @media(min-width:769px){ .pad{ display:none; } }
 </style>
 </head>
@@ -43,6 +56,7 @@
   <div class="hud">
     <span><span class="label">Obstacles</span> <b id="obs">0</b>/500</span>
     <span><span class="label">Lives</span> <b id="lives">3</b></span>
+    <span><span class="label">Heat</span> <b id="heat">1</b></span>
     <span id="state" class="label">Run</span>
   </div>
 
@@ -52,6 +66,12 @@
       <h1>Escape the Police</h1>
       <p>Run up the street. Dodge cars and fire. Tap UP on green for a speed boost, red sprains your ankle. You have 3 lives, a car or fire costs one. Pass 500 obstacles to grab a gun and take the cops down.</p>
       <button id="start" class="btn">Play</button>
+      <p class="hint">&hellip;or press Enter</p>
+      <div id="saveRow" class="save" hidden>
+        <input id="nameIn" maxlength="8" placeholder="Your name" aria-label="Your name">
+        <button id="saveBtn" class="btn2">Save</button>
+      </div>
+      <div id="lbPanel" class="lb"></div>
     </div>
   </div>
 
@@ -62,7 +82,7 @@
     <button class="down" data-act="down">▼</button>
     <button class="right" data-act="right">▶</button>
   </div>
-  <p class="foot">WASD or arrow keys to move. Space to fire when armed.</p>
+  <p class="foot">WASD or arrows to move &middot; Space fires when armed &middot; Enter starts a run.</p>
 </div>
 
 <script>
@@ -84,6 +104,17 @@ cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
 
 const CARS = ['#e2413b','#39b7c9','#b56bd6','#eaeaea','#f0862a','#5ad06a'];
 const el = id => document.getElementById(id);
+
+// ---- leaderboard (saved on this device) ----
+const LB='lb_escapethepolice';
+function getLB(){ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } }
+function addScore(name,sc){ const a=getLB(); a.push({name:(name||'YOU').slice(0,8), score:sc});
+  a.sort((x,y)=>y.score-x.score); a.splice(5); try{ localStorage.setItem(LB,JSON.stringify(a)); }catch(e){} return a; }
+function renderLB(){ const a=getLB();
+  el('lbPanel').innerHTML = '<div class="lbh">Top scores</div>' +
+    (a.length ? a.map((r,i)=>`<div class="lbrow"><span>${i+1}. ${r.name}</span><span>${r.score}</span></div>`).join('')
+              : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
+let pendingScore=0, saved=false;
 
 // ---- Deterministic per-row values ----
 const rnd = n => { const x = Math.sin(n*127.1+311.7)*43758.5; return x - Math.floor(x); };
@@ -114,7 +145,7 @@ function reset(){
   maxRow=0; obstacles=0; boostUntil=0; slowUntil=0; sprained=false; armed=false; policeRow=-4; lives=3; invuln=0;
   for(const k in lanes) delete lanes[k];
   running=true; over=false; barOn=false; barLocked=false; lastBar=performance.now(); barZone=null; barFlash=0;
-  el('overlay').classList.add('hidden'); el('fireBtn').classList.add('hidden');
+  el('overlay').classList.add('hidden'); el('fireBtn').classList.add('hidden'); el('saveRow').hidden=true;
   last = performance.now();
 }
 
@@ -154,6 +185,9 @@ function end(title, text){
   el('overlay').querySelector('p').textContent = text;
   el('start').textContent = 'Play again';
   el('fireBtn').classList.add('hidden');
+  pendingScore=obstacles; saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save';
+  el('nameIn').disabled=false; el('nameIn').value='';
+  el('saveRow').hidden=false; renderLB();
 }
 
 // ---- Update ----
@@ -170,7 +204,7 @@ function update(dt, now){
     for(let i=0;i<L.cars.length;i++){ L.cars[i]+=L.dir*L.speed*dt; if(L.cars[i]>W+TILE)L.cars[i]-=total; else if(L.cars[i]<-TILE)L.cars[i]+=total; }
   }
 
-  policeRow += POLICE_SPEED*dt;
+  policeRow += (POLICE_SPEED + Math.min(1, obstacles/500))*dt;   // cops get faster as you clear obstacles
   const f = Math.min(1, dt*18);
   player.colF += (player.col-player.colF)*f;
   player.rowF += (player.row-player.rowF)*f;
@@ -245,6 +279,7 @@ function drawBar(now){
 // ---- HUD + loop ----
 function hud(now){
   el('obs').textContent = obstacles; el('lives').textContent = lives;
+  el('heat').textContent = 1 + Math.floor(Math.min(1, obstacles/500)*4);
   let s = now<boostUntil?'Boost!' : now<slowUntil?'Slow' : sprained?'Hurt' : 'Run';
   if(armed) s = 'ARMED';
   el('state').textContent = s;
@@ -258,7 +293,13 @@ function loop(ts){
 
 // ---- Input ----
 const KEYS={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
-addEventListener('keydown', e=>{ if(e.key===' '){ e.preventDefault(); fire(); return; } const a=KEYS[e.key]; if(a){ e.preventDefault(); move(a); } });
+addEventListener('keydown', e=>{
+  if(e.target && e.target.tagName==='INPUT') return;
+  if(!el('overlay').classList.contains('hidden') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); reset(); return; }
+  if(e.key===' '){ e.preventDefault(); fire(); return; } const a=KEYS[e.key]; if(a){ e.preventDefault(); move(a); } });
+el('saveBtn').addEventListener('click', ()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore);
+  saved=true; el('saveBtn').disabled=true; el('saveBtn').textContent='Saved'; el('nameIn').disabled=true; renderLB(); });
+el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } e.stopPropagation(); });
 document.querySelectorAll('.pad button').forEach(b=>{ const a=b.dataset.act; const go=e=>{ e.preventDefault(); move(a); }; b.addEventListener('touchstart',go,{passive:false}); b.addEventListener('mousedown',go); });
 el('fireBtn').addEventListener('click', fire);
 el('start').addEventListener('click', reset);
@@ -266,6 +307,7 @@ el('start').addEventListener('click', reset);
 // idle frame so the start screen has a backdrop
 player = { col:5, row:0, colF:5, rowF:0, hop:0 }; policeRow=-6;
 maxRow=0; obstacles=0; lives=3; invuln=0; boostUntil=0; slowUntil=0; sprained=false; armed=false;
+renderLB();
 requestAnimationFrame(loop);
 </script>
 </body>
