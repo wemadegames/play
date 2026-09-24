@@ -12,9 +12,10 @@
   body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
     background:var(--bg); color:var(--text); font-family:ui-monospace,Menlo,Consolas,monospace; }
   .wrap{ width:100%; max-width:400px; display:flex; flex-direction:column; gap:10px; }
-  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:8px 10px 8px 0;
-    font-size:12px; text-decoration:none; color:var(--muted); }
-  .back:hover{ color:var(--text); }
+  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:10px 14px; min-height:44px;
+    font-size:12px; text-decoration:none; color:var(--muted);
+    border:1px solid var(--border); border-radius:8px; background:var(--panel); }
+  .back:hover{ color:var(--text); border-color:var(--muted); }
   .hud{ display:flex; justify-content:space-between; gap:8px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
   .hud b{ color:var(--accent); } .hud .jail{ color:var(--jail); }
   .stage{ position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; background:#0a0d13; }
@@ -60,7 +61,8 @@
   .pad{ display:grid; grid-template-columns:repeat(3,52px); grid-template-rows:repeat(2,52px); gap:6px; justify-content:center; }
   .pad button{ border:1px solid var(--border); background:var(--panel); color:var(--text); border-radius:8px; font-size:18px; font-family:inherit; cursor:pointer; }
   .pad .u{ grid-column:2; } .pad .l{ grid-column:1; grid-row:2; } .pad .d{ grid-column:2; grid-row:2; } .pad .r{ grid-column:3; grid-row:2; }
-  .foot{ font-size:11px; color:var(--muted); text-align:center; }
+  .foot{ font-size:12px; color:var(--muted); text-align:center; }
+  .hint{ margin:0; font-size:11px; color:var(--muted); }
 
   /* mobile */
   @media(min-width:769px){ .pad{ display:none; } }
@@ -69,7 +71,7 @@
 <body>
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
-  <div class="hud"><span>Level <b id="lvl">1</b>/5</span><span>Score <b id="score">0</b></span><span id="mode">Maze</span></div>
+  <div class="hud"><span>Level <b id="lvl">1</b>/5</span><span>Score <b id="score">0</b></span><span>Cops <b id="cops">1</b></span><span id="mode">Maze</span></div>
   <div class="stage">
     <canvas id="game"></canvas>
     <div id="overlay" class="overlay">
@@ -86,6 +88,7 @@
       </div>
       <div id="lbPanel" class="lb"></div>
       <button id="start" class="btn">Play</button>
+      <p class="hint">&hellip;or press Enter</p>
     </div>
   </div>
   <div class="abil">
@@ -96,7 +99,7 @@
     <button class="u" data-act="up">▲</button><button class="l" data-act="left">◀</button>
     <button class="d" data-act="down">▼</button><button class="r" data-act="right">▶</button>
   </div>
-  <p class="foot">WASD or arrows to move. Q freeze, E boost.</p>
+  <p class="foot">WASD or arrows to move &middot; Q freeze &middot; E boost &middot; Enter starts.</p>
 </div>
 
 <script>
@@ -176,12 +179,12 @@ function build(cols, jail){
   copEvery = diff==='easy' ? 2 : 1;                      // easy: cops move every 2nd step, so you are faster
   if(jail){ for(let i=0;i<3;i++) cops.push(farCell()); }
   else if(lvl===5){ cops.push({x:exitC.x, y:exitC.y-1, guard:true}); for(let i=0;i<4;i++) cops.push(farCell()); }
-  else { cops.push(farCell()); }
+  else { const n=1+Math.floor((lvl-1)/2); for(let i=0;i<n;i++) cops.push(farCell()); }   // later levels add cops
 }
 
-function updateHud(){ el('lvl').textContent=lvl; el('score').textContent=score; }
+function updateHud(){ el('lvl').textContent=lvl; el('score').textContent=score; el('cops').textContent=cops.length; }
 function updateAbil(){ const fb=el('freezeBtn'), bb=el('boostBtn');
-  fb.textContent='❄ Freeze ('+freezeCharges+')'; bb.textContent='⚡ Boost ('+boostCharges+')';
+  fb.textContent='❄ Freeze ×'+freezeCharges+' (Q)'; bb.textContent='⚡ Boost ×'+boostCharges+' (E)';
   fb.disabled = !running||freezeCharges<=0; bb.disabled = !running||boostCharges<=0; }
 function loadLevel(n){ lvl=n; mode='maze'; el('mode').textContent='Maze'; el('mode').className=''; build(DIMS[n], false); updateHud(); }
 function loadJail(){ returnLevel=lvl; mode='jail'; el('mode').textContent='JAIL'; el('mode').className='jail'; build(DIMS[lvl]+4, true); updateHud(); }
@@ -237,6 +240,8 @@ function useBoost(){ if(!running||boostCharges<=0) return; boostCharges--; boost
 
 const KEYS={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
 addEventListener('keydown',e=>{
+  if(e.target && e.target.tagName==='INPUT'){ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } return; }
+  if(!el('overlay').classList.contains('hidden') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); el('start').click(); return; }
   const a=KEYS[e.key]; if(a){ e.preventDefault(); tryMove(a); return; }
   if(e.key==='q'||e.key==='Q') useFreeze();
   else if(e.key==='e'||e.key==='E') useBoost();
