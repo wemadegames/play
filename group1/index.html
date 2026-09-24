@@ -36,6 +36,8 @@
     font-weight:700; font-family:inherit; font-size:15px; cursor:pointer; }
   .fire.hidden{ display:none; }
   .foot{ font-size:12px; color:var(--muted); text-align:center; }
+  .ctl{ display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:12px; color:var(--muted); }
+  .ctl b{ color:var(--text); font-weight:600; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
   .save{ display:flex; gap:8px; width:100%; max-width:240px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
@@ -65,6 +67,12 @@
     <div id="overlay" class="overlay">
       <h1>Escape the Police</h1>
       <p>Run up the street. Dodge cars and fire. Tap UP on green for a speed boost, red sprains your ankle. You have 3 lives, a car or fire costs one. Pass 500 obstacles to grab a gun and take the cops down.</p>
+      <div class="ctl">
+        <span><b>Move</b> WASD / arrows</span>
+        <span><b>Boost</b> tap ▲ on green</span>
+        <span><b>Fire</b> Space (when armed)</span>
+        <span><b>Start</b> Enter</span>
+      </div>
       <button id="start" class="btn">Play</button>
       <p class="hint">&hellip;or press Enter</p>
       <div id="saveRow" class="save" hidden>
