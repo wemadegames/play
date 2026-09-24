@@ -38,8 +38,12 @@
   .foot{ font-size:12px; color:var(--muted); text-align:center; }
   .ctl{ display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:12px; color:var(--muted); }
   .ctl b{ color:var(--text); font-weight:600; }
+  .tip{ position:absolute; left:0; right:0; bottom:10px; text-align:center; font-size:12px; color:#fff;
+    text-shadow:0 1px 2px #000; pointer-events:none; }
+  .skip{ padding:0 12px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:transparent;
+    color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
-  .save{ display:flex; gap:8px; width:100%; max-width:240px; }
+  .save{ display:flex; gap:8px; width:100%; max-width:300px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
     background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
   .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#1a1200;
@@ -64,22 +68,19 @@
 
   <div class="stage">
     <canvas id="game"></canvas>
-    <div id="overlay" class="overlay">
+    <div id="tip" class="tip">Press an arrow (or tap &#9650;) to run</div>
+    <div id="overlay" class="overlay hidden">
       <h1>Escape the Police</h1>
-      <p>Run up the street. Dodge cars and fire. Tap UP on green for a speed boost, red sprains your ankle. You have 3 lives, a car or fire costs one. Pass 500 obstacles to grab a gun and take the cops down.</p>
-      <div class="ctl">
-        <span><b>Move</b> WASD / arrows</span>
-        <span><b>Boost</b> tap ▲ on green</span>
-        <span><b>Fire</b> Space (when armed)</span>
-        <span><b>Start</b> Enter</span>
-      </div>
-      <button id="start" class="btn">Play</button>
-      <p class="hint">&hellip;or press Enter</p>
+      <p></p>
       <div id="saveRow" class="save" hidden>
-        <input id="nameIn" maxlength="8" placeholder="Your name" aria-label="Your name">
+        <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name for the top 5">
         <button id="saveBtn" class="btn2">Save</button>
+        <button id="skipBtn" class="skip">Skip</button>
       </div>
+      <p id="saveHint" class="hint" hidden>Enter saves &middot; Esc skips</p>
       <div id="lbPanel" class="lb"></div>
+      <button id="start" class="btn">Play again</button>
+      <p class="hint">&hellip;or press Enter</p>
     </div>
   </div>
 
@@ -90,7 +91,7 @@
     <button class="down" data-act="down">▼</button>
     <button class="right" data-act="right">▶</button>
   </div>
-  <p class="foot">WASD or arrows to move &middot; Space fires when armed &middot; Enter starts a run.</p>
+  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Boost</b> tap &#9650; on green (red sprains you) &middot; <b>Fire</b> Space after 500 obstacles &middot; 3 lives</p>
 </div>
 
 <script>
@@ -122,7 +123,9 @@ function renderLB(){ const a=getLB();
   el('lbPanel').innerHTML = '<div class="lbh">Top scores</div>' +
     (a.length ? a.map((r,i)=>`<div class="lbrow"><span>${i+1}. ${r.name}</span><span>${r.score}</span></div>`).join('')
               : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
-let pendingScore=0, saved=false;
+let pendingScore=0, saved=false, fresh=true;
+const fitsTop5 = sc => { const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
+function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el('nameIn').blur(); }
 
 // ---- Deterministic per-row values ----
 const rnd = n => { const x = Math.sin(n*127.1+311.7)*43758.5; return x - Math.floor(x); };
@@ -153,7 +156,8 @@ function reset(){
   maxRow=0; obstacles=0; boostUntil=0; slowUntil=0; sprained=false; armed=false; policeRow=-4; lives=3; invuln=0;
   for(const k in lanes) delete lanes[k];
   running=true; over=false; barOn=false; barLocked=false; lastBar=performance.now(); barZone=null; barFlash=0;
-  el('overlay').classList.add('hidden'); el('fireBtn').classList.add('hidden'); el('saveRow').hidden=true;
+  fresh=false; el('tip').hidden=true;
+  el('overlay').classList.add('hidden'); el('fireBtn').classList.add('hidden'); closeSave();
   last = performance.now();
 }
 
@@ -161,6 +165,7 @@ const cooldown = now => HOP_MS*(sprained?1.8:1)*(now<boostUntil?0.5:1)*(now<slow
 const hazards = R => rowType(R)==='road' ? (lane(R).cars.length) : (rowType(R)==='fire'?3:1);
 
 function move(act){
+  if(fresh) reset();                                 // first arrow starts the run, no menu
   if(!running) return;
   const now = performance.now();
   if(act==='up') lockBar(now);
@@ -195,7 +200,8 @@ function end(title, text){
   el('fireBtn').classList.add('hidden');
   pendingScore=obstacles; saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save';
   el('nameIn').disabled=false; el('nameIn').value='';
-  el('saveRow').hidden=false; renderLB();
+  const top=fitsTop5(pendingScore); el('saveRow').hidden=!top; el('saveHint').hidden=!top; renderLB();
+  if(top && !matchMedia('(pointer:coarse)').matches) el('nameIn').focus();
 }
 
 // ---- Update ----
@@ -303,11 +309,14 @@ function loop(ts){
 const KEYS={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
 addEventListener('keydown', e=>{
   if(e.target && e.target.tagName==='INPUT') return;
+  if(fresh && e.key==='Enter'){ e.preventDefault(); reset(); return; }
   if(!el('overlay').classList.contains('hidden') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); reset(); return; }
   if(e.key===' '){ e.preventDefault(); fire(); return; } const a=KEYS[e.key]; if(a){ e.preventDefault(); move(a); } });
 el('saveBtn').addEventListener('click', ()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore);
-  saved=true; el('saveBtn').disabled=true; el('saveBtn').textContent='Saved'; el('nameIn').disabled=true; renderLB(); });
-el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); } e.stopPropagation(); });
+  saved=true; closeSave(); renderLB(); });
+el('skipBtn').addEventListener('click', closeSave);
+el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveBtn').click(); }
+  else if(e.key==='Escape'){ e.preventDefault(); closeSave(); } e.stopPropagation(); });
 document.querySelectorAll('.pad button').forEach(b=>{ const a=b.dataset.act; const go=e=>{ e.preventDefault(); move(a); }; b.addEventListener('touchstart',go,{passive:false}); b.addEventListener('mousedown',go); });
 el('fireBtn').addEventListener('click', fire);
 el('start').addEventListener('click', reset);
