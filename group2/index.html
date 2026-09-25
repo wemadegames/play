@@ -156,6 +156,13 @@ function genMaze(cols,rows){
     if(dir==='n'){c.n=0;d.s=0;} if(dir==='e'){c.e=0;d.w=0;} if(dir==='s'){c.s=0;d.n=0;} if(dir==='w'){c.w=0;d.e=0;}
     d.v=1; stack.push([nx,ny]);
   }
+  // A few extra passages turn the single-route tree into a maze with choices.
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+    if(Math.random()>0.18) continue;
+    const c=cells[idx(x,y)];
+    if(x<cols-1 && c.e){ c.e=0; cells[idx(x+1,y)].w=0; }
+    else if(y<rows-1 && c.s){ c.s=0; cells[idx(x,y+1)].n=0; }
+  }
   return { cols, rows, cells, idx };
 }
 
@@ -176,13 +183,13 @@ function step(sx,sy,tx,ty){
 }
 
 function farCell(){
-  for(let i=0;i<200;i++){
-    const x=Math.floor(Math.random()*m.cols), y=Math.floor(Math.random()*m.rows);
-    if((x+y) < (m.cols)) continue;                       // keep away from the start corner
-    if(x===exitC.x && y===exitC.y) continue;
-    return {x,y};
+  const options=[];
+  for(let y=0;y<m.rows;y++) for(let x=0;x<m.cols;x++){
+    if(x+y < m.cols || (x===exitC.x && y===exitC.y) ||
+       cops.some(o=>o.x===x && o.y===y)) continue;
+    options.push({x,y});
   }
-  return {x:m.cols-1, y:0};
+  return options[Math.floor(Math.random()*options.length)] || {x:m.cols-1,y:0};
 }
 
 function build(cols, jail){
@@ -190,9 +197,9 @@ function build(cols, jail){
   cv.width=cols*TILE; cv.height=cols*TILE; ctx.imageSmoothingEnabled=false;
   cops=[]; moveCount=0; freezeMoves=0; boostMoves=0;
   freezeCharges=2; boostCharges=2;                       // abilities refresh each level
-  copEvery = diff==='easy' ? 2 : 1;                      // easy: cops move every 2nd step, so you are faster
+  copEvery = diff==='easy' ? 3 : 2;                      // easy: cops move every 2nd step, so you are faster
   if(jail){ for(let i=0;i<3;i++) cops.push(farCell()); }
-  else if(lvl===5){ cops.push({x:exitC.x, y:exitC.y-1, guard:true}); for(let i=0;i<4;i++) cops.push(farCell()); }
+  else if(lvl===5){ for(let i=0;i<4;i++) cops.push(farCell()); }
   else { const n=1+Math.floor((lvl-1)/2); for(let i=0;i<n;i++) cops.push(farCell()); }   // later levels add cops
 }
 
@@ -242,7 +249,7 @@ function tryMove(dir){
   if(dir==='up'&&!c.n){ player.y--; moved=true; } else if(dir==='down'&&!c.s){ player.y++; moved=true; }
   else if(dir==='left'&&!c.w){ player.x--; moved=true; } else if(dir==='right'&&!c.e){ player.x++; moved=true; }
   if(!moved) return;                                     // into a wall = no move, so cops stay put
-  if(cops.some(o=>o.x===player.x&&o.y===player.y)) return caught();
+  if(freezeMoves<=0 && cops.some(o=>o.x===player.x&&o.y===player.y)) return caught();
   if(player.x===exitC.x&&player.y===exitC.y) return reachedExit();
   moveCount++;
   let copsStep = (moveCount % copEvery === 0);
@@ -276,8 +283,19 @@ el('skipBtn').onclick=closeSave;
 
 // ---- cops + draw ----
 function stepCops(){
-  for(const o of cops){ const [nx,ny]=step(o.x,o.y,player.x,player.y); o.x=nx; o.y=ny;
-    if(o.x===player.x&&o.y===player.y){ caught(); return; } }
+  for(const o of cops){
+    const c=m.cells[m.idx(o.x,o.y)], options=[];
+    if(!c.n) options.push([o.x,o.y-1]);
+    if(!c.e) options.push([o.x+1,o.y]);
+    if(!c.s) options.push([o.x,o.y+1]);
+    if(!c.w) options.push([o.x-1,o.y]);
+    // Patrol instead of following the shortest route to the player every turn.
+    // Never block the only exit, and keep each cop on a separate square.
+    const open=options.filter(([x,y])=>(x!==exitC.x||y!==exitC.y) &&
+      !cops.some(other=>other!==o && other.x===x && other.y===y));
+    if(open.length){ const [nx,ny]=open[Math.floor(Math.random()*open.length)]; o.x=nx; o.y=ny; }
+    if(o.x===player.x&&o.y===player.y){ caught(); return; }
+  }
 }
 function draw(){
   const {cols,rows,cells}=m;
