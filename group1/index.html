@@ -99,7 +99,7 @@
    Schematic build. Crossy-road street escape with a color reaction bar. */
 
 // ---- Knobs (easy to change live) ----
-const GUN_GOAL = 500;     // obstacles to pass before the gun appears
+const GUN_GOAL = 100;     // obstacles to pass before the gun appears
 const BAR_EVERY = 5000;   // color bar pops every 5s
 const BAR_WINDOW = 1800;  // ms you have to tap up
 const HOP_MS = 130;       // base time between hops
@@ -240,6 +240,9 @@ function hit(reason){                              // car or fire: costs a life,
   if(now<invuln) return;                          // brief mercy right after a hit
   lives--;
   if(lives<=0){ lose(reason); return; }
+  // Move back to the nearest safe grass row so one hazard cannot drain all lives.
+  while(player.row > -2 && rowType(player.row)!=='grass') player.row--;
+  player.rowF=player.row; player.colF=player.col;
   invuln = now+1600;                              // flash and no damage for a moment
 }
 
