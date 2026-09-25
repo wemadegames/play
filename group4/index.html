@@ -221,7 +221,7 @@ el('nameIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefa
   else if(e.key==='Escape'){ e.preventDefault(); closeSave(); } e.stopPropagation(); });
 
 function update(dt){
-  if(state==='throw'){ wr.y-=1.4; wr.x+=Math.sin(performance.now()/300)*0.6; }
+  if(state==='throw'){ wr.x+=Math.sin(performance.now()/300)*dt*36; }
   else if(state==='ball'){
     ball.t=Math.min(1, ball.t+dt*1.15);
     wr.x+=(ball.to.x-wr.x)*0.08; wr.y+=(ball.to.y-wr.y)*0.08;
@@ -232,10 +232,10 @@ function update(dt){
   }
   else if(state==='run'){
     const now=performance.now();
-    keysHeld.forEach(k=>{ const m=MOVE[k]; if(m){ wr.x+=m[0]*RUN; wr.y+=m[1]*RUN; } });
+    keysHeld.forEach(k=>{ const m=MOVE[k]; if(m){ wr.x+=m[0]*RUN*dt*60; wr.y+=m[1]*RUN*dt*60; } });
     wr.x=Math.max(8,Math.min(W-8,wr.x)); wr.y=Math.max(EZ-6,Math.min(H-8,wr.y));
     for(const d of defs){ if(now<d.stunUntil) continue;                 // tackled defenders stay down
-      const dx=wr.x-d.x, dy=wr.y-d.y, m=Math.hypot(dx,dy)||1; d.x+=dx/m*defSpeed; d.y+=dy/m*defSpeed;
+      const dx=wr.x-d.x, dy=wr.y-d.y, m=Math.hypot(dx,dy)||1; d.x+=dx/m*defSpeed*dt*60; d.y+=dy/m*defSpeed*dt*60;
       if(dist(d,wr)<13){ return explode(); } }
     if(wr.y<=EZ){ score+=6; setScore(); defSpeed=Math.min(DEF+1.6, defSpeed+0.2); heat++; el('heat').textContent=heat;
       state='extra'; msg('TOUCHDOWN! +6. The defenders get faster now. Press K for the extra point.'); }
