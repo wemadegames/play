@@ -60,7 +60,7 @@
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
   <div class="hud">
-    <span><span class="label">Obstacles</span> <b id="obs">0</b>/500</span>
+    <span><span class="label">Obstacles</span> <b id="obs">0</b>/100</span>
     <span><span class="label">Lives</span> <b id="lives">3</b></span>
     <span><span class="label">Heat</span> <b id="heat">1</b></span>
     <span id="state" class="label">Run</span>
@@ -91,7 +91,7 @@
     <button class="down" data-act="down">▼</button>
     <button class="right" data-act="right">▶</button>
   </div>
-  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Boost</b> tap &#9650; on green (red sprains you) &middot; <b>Fire</b> Space after 500 obstacles &middot; 3 lives</p>
+  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Boost</b> tap &#9650; on green (red sprains you) &middot; <b>Fire</b> Space after 100 obstacles &middot; 3 lives</p>
 </div>
 
 <script>
@@ -218,7 +218,7 @@ function update(dt, now){
     for(let i=0;i<L.cars.length;i++){ L.cars[i]+=L.dir*L.speed*dt; if(L.cars[i]>W+TILE)L.cars[i]-=total; else if(L.cars[i]<-TILE)L.cars[i]+=total; }
   }
 
-  policeRow += (POLICE_SPEED + Math.min(1, obstacles/500))*dt;   // cops get faster as you clear obstacles
+  policeRow += (POLICE_SPEED + Math.min(1, obstacles/100))*dt;   // cops get faster as you clear obstacles
   const f = Math.min(1, dt*18);
   player.colF += (player.col-player.colF)*f;
   player.rowF += (player.row-player.rowF)*f;
@@ -296,7 +296,7 @@ function drawBar(now){
 // ---- HUD + loop ----
 function hud(now){
   el('obs').textContent = obstacles; el('lives').textContent = lives;
-  el('heat').textContent = 1 + Math.floor(Math.min(1, obstacles/500)*4);
+  el('heat').textContent = 1 + Math.floor(Math.min(1, obstacles/100)*4);
   let s = now<boostUntil?'Boost!' : now<slowUntil?'Slow' : sprained?'Hurt' : 'Run';
   if(armed) s = 'ARMED';
   el('state').textContent = s;
