@@ -122,7 +122,7 @@
       <button class="spell" data-act="bolt">⚡ Spark Bolt<small>quick strike</small></button>
       <button class="spell" data-act="shield">🛡️ Shield<small>soften the next hit</small></button>
       <button class="spell" data-act="heal">✨ Mend<small>heal yourself</small></button>
-      <button class="spell death" id="deathBtn" data-act="death">☠️ Death Spell (1)<small>one use · instant win · answers the curse</small></button>
+      <button class="spell death" id="deathBtn" data-act="death">☠️ Death Spell (1)<small>one use · after round 3, or to answer the curse</small></button>
     </div>
     <p class="ctl-line">Tap a spell to cast it. When the curse warning appears, only your Death Spell saves you.</p>
     <button class="pickown" onclick="location.search='?pick'">Pick your own wizard, rival and wand</button>
@@ -200,6 +200,7 @@ function startBattle(){
   youMax=youHP=c.hp; foeMax=foeHP=f.hp;
   el('youEm').textContent=c.em; el('youName').textContent=G.char;
   el('foeEm').textContent=f.em; el('foeName').textContent=G.foe;
+  turn=0; busy=false; done=false; deathLeft=1; foeDeathLeft=1; foeCharging=false; youShield=false;
   lastRegen=0; el('arenaLine').textContent='Round 1';
   log(`${c.em} ${G.char} raises the ${G.wand} wand against ${f.em} ${G.foe}!`);
   show('s-battle'); refresh();
@@ -226,7 +227,7 @@ function playerAct(act){
     else { return finish(false, `${G.foe} completes the Killing Curse. You had to answer with your own Death Spell.`); }
   }
   busy=true;
-  if(act==='death'){ if(deathLeft<=0){ busy=false; return; } deathLeft=0; el('deathBtn').textContent='☠️ Death Spell (used)';
+  if(act==='death'){ if(deathLeft<=0 || turn<3){ log('☠️ Death Spell unlocks after round 3.'); busy=false; return; } deathLeft=0; el('deathBtn').textContent='☠️ Death Spell (used)';
     log('☠️ You cast the forbidden Death Spell!'); return finish(true, `${G.foe} is struck down. You win.`); }
   if(act==='flame'){ const d=14+atkBonus()+rnd(6); foeHP-=d; log(`🔥 Flame Jet hits for ${d}.`); }
   else if(act==='bolt'){ const d=9+atkBonus()+rnd(4); foeHP-=d; log(`⚡ Spark Bolt strikes for ${d}.`); }
@@ -248,7 +249,7 @@ function enemyTurn(){
     el('arenaLine').textContent = 'Round '+turn+(regen>0 ? ' · enemy regrows '+regen+' hp' : '');
     refresh();
     // random chance to charge the one-time killing curse
-    if(foeDeathLeft>0 && Math.random() < 0.14 + turn*0.05){
+    if(foeDeathLeft>0 && turn>=3 && Math.random() < 0.14 + turn*0.05){
       foeDeathLeft=0; foeCharging=true;
       el('banner').hidden=false; el('banner').textContent=`⚠️ ${G.foe} is casting the Killing Curse! Answer with your Death Spell now!`;
       el('deathBtn').classList.add('charge');
