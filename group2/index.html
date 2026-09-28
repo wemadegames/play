@@ -182,10 +182,18 @@ function step(sx,sy,tx,ty){
   return [cur%cols, Math.floor(cur/cols)];
 }
 
+function exitPath(){
+  const path=new Set(), start=m.idx(0,0), goal=m.idx(exitC.x,exitC.y);
+  let x=0,y=0;
+  for(let i=0;i<m.cols*m.rows && (x!==exitC.x||y!==exitC.y);i++){
+    path.add(m.idx(x,y)); const [nx,ny]=step(x,y,exitC.x,exitC.y); x=nx;y=ny;
+  }
+  path.add(goal); return path;
+}
 function farCell(){
-  const options=[];
+  const options=[], safeRoute=exitPath();
   for(let y=0;y<m.rows;y++) for(let x=0;x<m.cols;x++){
-    if(x+y < m.cols || (x===exitC.x && y===exitC.y) ||
+    if(x+y < m.cols || safeRoute.has(m.idx(x,y)) || Math.abs(x-exitC.x)+Math.abs(y-exitC.y)<3 ||
        cops.some(o=>o.x===x && o.y===y)) continue;
     options.push({x,y});
   }
@@ -197,7 +205,7 @@ function build(cols, jail){
   cv.width=cols*TILE; cv.height=cols*TILE; ctx.imageSmoothingEnabled=false;
   cops=[]; moveCount=0; freezeMoves=0; boostMoves=0;
   freezeCharges=2; boostCharges=2;                       // abilities refresh each level
-  copEvery = diff==='easy' ? 3 : 2;                      // easy: cops move every 2nd step, so you are faster
+  copEvery = diff==='easy' ? 4 : 3;                      // cops patrol less often than the player moves
   if(jail){ for(let i=0;i<3;i++) cops.push(farCell()); }
   else if(lvl===5){ for(let i=0;i<4;i++) cops.push(farCell()); }
   else { const n=1+Math.floor((lvl-1)/2); for(let i=0;i<n;i++) cops.push(farCell()); }   // later levels add cops
@@ -292,6 +300,7 @@ function stepCops(){
     // Patrol instead of following the shortest route to the player every turn.
     // Never block the only exit, and keep each cop on a separate square.
     const open=options.filter(([x,y])=>(x!==exitC.x||y!==exitC.y) &&
+      (Math.abs(x-player.x)+Math.abs(y-player.y)>1) &&
       !cops.some(other=>other!==o && other.x===x && other.y===y));
     if(open.length){ const [nx,ny]=open[Math.floor(Math.random()*open.length)]; o.x=nx; o.y=ny; }
     if(o.x===player.x&&o.y===player.y){ caught(); return; }
