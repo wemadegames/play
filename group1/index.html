@@ -60,7 +60,7 @@
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
   <div class="hud">
-    <span><span class="label">Obstacles</span> <b id="obs">0</b>/100</span>
+    <span><span class="label">Obstacles</span> <b id="obs">0</b>/50</span>
     <span><span class="label">Lives</span> <b id="lives">3</b></span>
     <span><span class="label">Heat</span> <b id="heat">1</b></span>
     <span id="state" class="label">Run</span>
@@ -91,7 +91,7 @@
     <button class="down" data-act="down">▼</button>
     <button class="right" data-act="right">▶</button>
   </div>
-  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Boost</b> tap &#9650; on green (red sprains you) &middot; <b>Fire</b> Space after 100 obstacles &middot; 3 lives</p>
+  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Boost</b> tap &#9650; on green (red sprains you) &middot; <b>Fire</b> Space after 50 obstacles &middot; 3 lives</p>
 </div>
 
 <script>
@@ -99,7 +99,7 @@
    Schematic build. Crossy-road street escape with a color reaction bar. */
 
 // ---- Knobs (easy to change live) ----
-const GUN_GOAL = 100;     // obstacles to pass before the gun appears
+const GUN_GOAL = 50;     // obstacles to pass before the gun appears
 const BAR_EVERY = 5000;   // color bar pops every 5s
 const BAR_WINDOW = 1800;  // ms you have to tap up
 const HOP_MS = 130;       // base time between hops
