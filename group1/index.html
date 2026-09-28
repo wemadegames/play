@@ -232,7 +232,7 @@ function update(dt, now){
     } else if(burning(player.col,R,now)){ hit('The fire caught you.'); }
     if(!running) return;
   }
-  if(policeRow >= player.rowF-0.05) return lose('The police caught you.');
+  if(now>=invuln && policeRow >= player.rowF-0.05) return lose('The police caught you.');
 }
 function lose(reason){ running=false; over=true; end('Busted!', reason+' Obstacles passed: '+obstacles); }
 function hit(reason){                              // car or fire: costs a life, not instant game over
@@ -243,6 +243,7 @@ function hit(reason){                              // car or fire: costs a life,
   // Move back to the nearest safe grass row so one hazard cannot drain all lives.
   while(player.row > -2 && rowType(player.row)!=='grass') player.row--;
   player.rowF=player.row; player.colF=player.col;
+  policeRow=Math.min(policeRow,player.row-2); // recovery must not put the player inside the police line
   invuln = now+1600;                              // flash and no damage for a moment
 }
 
