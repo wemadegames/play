@@ -121,7 +121,7 @@
 <script>
 /* ===== Football Fusion (Group 4) — schematic football ===== */
 const W=340, H=640, EZ=56;            // bigger field + end zone height (top)
-const RUN=2.4, DEF=2.5;               // player run speed vs faster Eagles
+const RUN=2.4, DEF=1.1;               // a clear first-run speed advantage before heat rises
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
 cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
 const el=id=>document.getElementById(id);
@@ -145,8 +145,8 @@ let state='menu', power=80, score=0, tackleCd=0, last=0, wantCatch=false, explod
 let qb, wr, ball, defs, line, mates, particles=[];
 
 const makeDefs = () => [
-  {x:70,y:H-270,stunUntil:0}, {x:170,y:H-320,stunUntil:0},
-  {x:270,y:H-270,stunUntil:0}, {x:170,y:H-200,stunUntil:0}
+  {x:62,y:H-270,stunUntil:0}, {x:230,y:H-340,stunUntil:0},
+  {x:278,y:H-270,stunUntil:0}, {x:105,y:H-195,stunUntil:0}
 ];
 // more of our team on the field: blockers and receivers downfield
 const makeMates = () => [
@@ -234,11 +234,12 @@ function update(dt){
     const now=performance.now();
     keysHeld.forEach(k=>{ const m=MOVE[k]; if(m){ wr.x+=m[0]*RUN*dt*60; wr.y+=m[1]*RUN*dt*60; } });
     wr.x=Math.max(8,Math.min(W-8,wr.x)); wr.y=Math.max(EZ-6,Math.min(H-8,wr.y));
+    if(wr.y<=EZ){ score+=6; setScore(); defSpeed=Math.min(DEF+1.6, defSpeed+0.2); heat++; el('heat').textContent=heat;
+      state='extra'; msg('TOUCHDOWN! +6. The defenders get faster now. Press K for the extra point.'); return; }
     for(const d of defs){ if(now<d.stunUntil) continue;                 // tackled defenders stay down
       const dx=wr.x-d.x, dy=wr.y-d.y, m=Math.hypot(dx,dy)||1; d.x+=dx/m*defSpeed*dt*60; d.y+=dy/m*defSpeed*dt*60;
       if(dist(d,wr)<13){ return explode(); } }
-    if(wr.y<=EZ){ score+=6; setScore(); defSpeed=Math.min(DEF+1.6, defSpeed+0.2); heat++; el('heat').textContent=heat;
-      state='extra'; msg('TOUCHDOWN! +6. The defenders get faster now. Press K for the extra point.'); }
+
   }
   else if(state==='explode'){
     for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=40*dt; p.life-=dt; }
