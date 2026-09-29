@@ -4,77 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spellbound Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap">
 <style>
-  :root{ --bg:#160f24; --panel:#241832; --panel2:#2e1f42; --text:#f3ecff; --muted:#a996c4;
-    --accent:#c9a227; --good:#5ad06a; --bad:#e2413b; --border:#3d2b57; }
+  /* ===== Spellbound Academy (Group 3) — 8-bit wizard duel ===== */
+  :root{ --bg:#1a0f30; --panel:#2a1a48; --panel2:#39265e; --text:#f2ecff; --muted:#b3a0d8;
+    --gold:#ffd23f; --accent:#ffd23f; --good:#5ad06a; --bad:#ff5a5a; --magenta:#ff6ec7; --cyan:#4fd6ff; --border:#0c0618; }
   *{ box-sizing:border-box; }
-  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
-    background:radial-gradient(circle at 50% -10%, #2a1c46, var(--bg) 65%); color:var(--text);
-    font-family:"Trebuchet MS",system-ui,sans-serif; }
-  .wrap{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; }
-  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:10px 14px; min-height:44px;
-    font-size:12px; text-decoration:none; color:var(--muted);
-    border:1px solid var(--border); border-radius:8px; background:var(--panel); }
-  .back:hover{ color:var(--text); border-color:var(--muted); }
-  .title{ text-align:center; }
-  .title .eyebrow{ font-size:11px; letter-spacing:.25em; text-transform:uppercase; color:var(--accent); }
-  .title h1{ margin:4px 0 0; font-size:26px; letter-spacing:.02em; }
-  .intro{ margin:0; text-align:center; font-size:13px; color:var(--muted); }
-  .spell small{ display:block; font-size:11px; font-weight:400; color:var(--muted); }
-  .step-label{ font-size:12px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
-  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .pick{ display:flex; align-items:center; gap:10px; padding:14px; min-height:44px; text-align:left;
-    border:1px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text);
-    font-family:inherit; font-size:15px; cursor:pointer; }
-  .pick:hover{ border-color:var(--accent); background:var(--panel2); }
-  .pick .em{ font-size:26px; line-height:1; }
-  .pick small{ display:block; color:var(--muted); font-size:11px; }
   [hidden]{ display:none!important; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
+    color:var(--text); font-family:"Silkscreen",monospace; image-rendering:pixelated;
+    background:var(--bg); background-image:radial-gradient(rgba(255,255,255,.10) 1px, transparent 1px); background-size:22px 22px; }
+  .wrap{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; }
+  .pixel,.title h1,.title .eyebrow,.step-label,.fighter .who b,.overlay h2,.btn{ font-family:"Press Start 2P",monospace; }
+
+  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:10px 12px; min-height:44px;
+    font-size:12px; text-decoration:none; color:var(--muted); border:3px solid var(--border); background:var(--panel); box-shadow:3px 3px 0 rgba(0,0,0,.4); }
+  .back:hover{ color:var(--gold); }
+
+  .title{ text-align:center; }
+  .title .eyebrow{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
+  .title h1{ margin:12px 0 0; font-size:clamp(14px,4.4vw,20px); line-height:1.5; color:var(--gold); text-shadow:3px 3px 0 #7a1e6a; }
+  .intro{ margin:0; text-align:center; font-size:13px; color:var(--muted); line-height:1.55; }
+  .step-label{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .pick{ display:flex; align-items:center; gap:12px; padding:14px; min-height:56px; text-align:left; cursor:pointer;
+    border:3px solid var(--border); background:var(--panel); color:var(--text); font-family:"Silkscreen",monospace; font-size:14px; box-shadow:4px 4px 0 rgba(0,0,0,.45); }
+  .pick:hover{ background:var(--panel2); transform:translate(-1px,-1px); box-shadow:5px 5px 0 rgba(0,0,0,.45); }
+  .pick:active{ transform:translate(2px,2px); box-shadow:2px 2px 0 rgba(0,0,0,.45); }
+  .pick .em{ font-size:30px; line-height:1; } .pick b{ font-size:15px; } .pick small{ display:block; color:var(--muted); font-size:12px; }
 
   /* battle */
-  .card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--panel); }
+  .card{ border:3px solid var(--border); padding:14px; background:var(--panel); box-shadow:5px 5px 0 rgba(0,0,0,.45); }
   .fighter{ display:flex; align-items:center; gap:12px; }
-  .fighter .em{ font-size:40px; }
+  .fighter .em{ font-size:44px; }
   .fighter .who{ flex:1; }
-  .fighter .who b{ font-size:16px; } .fighter .who span{ font-size:11px; color:var(--muted); }
-  .bar{ height:12px; border-radius:8px; background:#3a2b52; overflow:hidden; margin-top:6px; }
-  .bar > i{ display:block; height:100%; background:var(--good); transition:width .35s; }
-  .bar.foe > i{ background:var(--bad); }
+  .fighter .who b{ font-size:11px; } .fighter .who span{ font-size:12px; color:var(--muted); }
+  .bar{ height:16px; border:3px solid var(--border); background:#150c28; margin-top:8px; padding:2px; }
+  .bar > i{ display:block; height:100%; background:var(--good);
+    background-image:repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 2px, transparent 2px 7px); transition:width .3s steps(8); }
+  .bar.foe > i{ background:var(--bad); background-image:repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 2px, transparent 2px 7px); }
+  .hit{ animation:hit .25s steps(2) 2; }
+  @keyframes hit{ 50%{ filter:brightness(2.2); transform:translateX(3px); } }
   .arena{ text-align:center; font-size:12px; color:var(--muted); }
-  .banner{ text-align:center; padding:10px; border-radius:10px; background:#4a1414; border:1px solid #7a2020;
-    color:#ffb4a8; font-weight:700; font-size:13px; animation:pulse 1s infinite; }
-  @keyframes pulse{ 50%{ opacity:.5; } }
-  .log{ font-size:13px; line-height:1.5; min-height:66px; color:var(--text); }
-  .log div{ opacity:.55; } .log div:last-child{ opacity:1; }
-  .actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .spell{ padding:12px; min-height:46px; border:1px solid var(--border); border-radius:10px; background:var(--panel2);
-    color:var(--text); font-family:inherit; font-size:14px; cursor:pointer; }
-  .spell:hover:not(:disabled){ border-color:var(--accent); }
-  .spell:disabled{ opacity:.4; cursor:not-allowed; }
-  .spell.death{ grid-column:1 / -1; background:#3a1030; border-color:#7a2060; color:#ff9ce0; font-weight:700; }
-  .spell.death.charge{ animation:pulse .7s infinite; border-color:#ff5aa8; }
+  .banner{ text-align:center; padding:12px; border:3px solid #7a2020; background:#3a0f12; color:#ff9a8f;
+    font-family:"Press Start 2P",monospace; font-size:10px; line-height:1.6; animation:pulse .8s steps(2) infinite; }
+  @keyframes pulse{ 50%{ opacity:.4; } }
+  .log{ font-size:14px; line-height:1.55; min-height:76px; }
+  .log div{ opacity:.5; } .log div:last-child{ opacity:1; color:var(--gold); }
+
+  .actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .spell{ padding:12px 8px; min-height:52px; cursor:pointer; color:var(--text); background:var(--panel2);
+    border:3px solid var(--border); font-family:"Silkscreen",monospace; font-weight:700; font-size:14px; box-shadow:4px 4px 0 rgba(0,0,0,.45); }
+  .spell small{ display:block; font-size:11px; font-weight:400; color:var(--muted); margin-top:3px; }
+  .spell:hover:not(:disabled){ transform:translate(-1px,-1px); box-shadow:5px 5px 0 rgba(0,0,0,.45); }
+  .spell:active:not(:disabled){ transform:translate(2px,2px); box-shadow:2px 2px 0 rgba(0,0,0,.45); }
+  .spell:disabled{ opacity:.35; cursor:not-allowed; box-shadow:none; }
+  .spell.dodge{ grid-column:1 / -1; background:#0f3550; color:var(--cyan); }
+  .spell.death{ grid-column:1 / -1; background:#3a1030; color:var(--magenta); }
+  .spell.charge{ animation:pulse .5s steps(2) infinite; }
 
   .overlay{ position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:12px; padding:24px; text-align:center; background:rgba(12,8,22,.92); }
-  .overlay h2{ margin:0; font-size:26px; } .overlay p{ margin:0; color:var(--muted); max-width:32ch; }
-  .btn{ padding:12px 28px; min-height:44px; border:none; border-radius:10px; background:var(--accent); color:#231a00;
-    font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; }
-  .ctl-line{ margin:0; text-align:center; font-size:12px; color:var(--muted); }
+    gap:14px; padding:24px; text-align:center; background:rgba(10,6,20,.95); }
+  .overlay h2{ margin:0; font-size:20px; line-height:1.5; } .overlay p{ margin:0; color:var(--muted); max-width:34ch; font-size:14px; line-height:1.6; }
+  .btn{ padding:14px 20px; min-height:48px; border:3px solid var(--border); background:var(--gold); color:#2a1400; font-size:11px; cursor:pointer; box-shadow:4px 4px 0 rgba(0,0,0,.5); }
+  .btn:active{ transform:translate(2px,2px); box-shadow:2px 2px 0 rgba(0,0,0,.5); }
+  .ctl-line{ margin:0; text-align:center; font-size:12px; color:var(--muted); line-height:1.5; }
   .hint{ margin:0; font-size:11px; color:var(--muted); }
-  .save{ display:flex; gap:8px; width:100%; max-width:300px; }
-  .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
-    background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
-  .btn2{ padding:0 16px; min-height:44px; border:none; border-radius:8px; background:var(--accent); color:#231a00;
-    font-weight:700; font-family:inherit; font-size:14px; cursor:pointer; }
+  .save{ display:flex; gap:8px; width:100%; max-width:320px; }
+  .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:3px solid var(--border); background:var(--panel); color:var(--text); font-family:"Silkscreen",monospace; font-size:14px; }
+  .btn2{ padding:0 14px; min-height:44px; border:3px solid var(--border); background:var(--gold); color:#2a1400; font-family:"Silkscreen",monospace; font-weight:700; font-size:14px; cursor:pointer; }
   .btn2:disabled{ opacity:.5; }
-  .lb{ width:100%; max-width:240px; font-size:12px; text-align:left; }
+  .lb{ width:100%; max-width:260px; font-size:12px; text-align:left; }
   .lbh{ text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; }
-  .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid var(--border); }
+  .lbrow{ display:flex; justify-content:space-between; padding:4px 0; border-top:1px solid #33265a; }
   .lbrow.empty{ justify-content:center; color:var(--muted); }
-  .skip{ padding:0 12px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:transparent;
-    color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
-  .pickown{ align-self:center; background:none; border:none; color:var(--muted); font-family:inherit; font-size:12px;
-    text-decoration:underline; cursor:pointer; padding:10px; min-height:44px; }
+  .skip{ padding:0 12px; min-height:44px; border:3px solid var(--border); background:transparent; color:var(--muted); font-family:"Silkscreen",monospace; font-size:13px; cursor:pointer; }
+  .pickown{ align-self:center; background:none; border:none; color:var(--muted); font-family:"Silkscreen",monospace; font-size:12px; text-decoration:underline; cursor:pointer; padding:10px; min-height:44px; }
   @media(max-width:420px){ .grid{ grid-template-columns:1fr; } }
 </style>
 </head>
@@ -84,25 +92,19 @@
   <div class="title"><div class="eyebrow">Spellbound</div><h1>Spellbound Academy</h1></div>
   <p class="intro">You're already in the duel. Tap a spell to cast. The enemy regrows a little more health every round - finish it fast.</p>
 
-  <!-- Step 1: character -->
   <section id="s-char" hidden>
     <p class="step-label">1. Choose your wizard</p>
     <div class="grid" id="charGrid"></div>
   </section>
-
-  <!-- Step 2: enemy -->
   <section id="s-enemy" hidden>
     <p class="step-label">2. Choose your rival</p>
     <div class="grid" id="enemyGrid"></div>
   </section>
-
-  <!-- Step 3: wand -->
   <section id="s-wand" hidden>
     <p class="step-label">3. Choose your wand</p>
     <div class="grid" id="wandGrid"></div>
   </section>
 
-  <!-- Step 4: battle -->
   <section id="s-battle" hidden style="display:flex;flex-direction:column;gap:12px;">
     <div class="card">
       <div class="fighter"><div class="em" id="foeEm">👹</div>
@@ -122,9 +124,10 @@
       <button class="spell" data-act="bolt">⚡ Spark Bolt<small>quick strike</small></button>
       <button class="spell" data-act="shield">🛡️ Shield<small>soften the next hit</small></button>
       <button class="spell" data-act="heal">✨ Mend<small>heal yourself</small></button>
+      <button class="spell dodge" id="dodgeBtn" data-act="dodge">💨 Dodge (2)<small>slip a hit or the curse</small></button>
       <button class="spell death" id="deathBtn" data-act="death">☠️ Death Spell (1)<small>one use · after round 3, or to answer the curse</small></button>
     </div>
-    <p class="ctl-line">Tap a spell to cast it. When the curse warning appears, only your Death Spell saves you.</p>
+    <p class="ctl-line">Tap a spell to cast it. When the curse warning appears, answer with your Death Spell or a Dodge.</p>
     <button class="pickown" onclick="location.search='?pick'">Pick your own wizard, rival and wand</button>
   </section>
 </div>
@@ -144,7 +147,7 @@
 </div>
 
 <script>
-/* ===== Spellbound Academy (Group 3) — turn-based wizard duel ===== */
+/* ===== Spellbound Academy (Group 3) — 8-bit turn-based wizard duel ===== */
 const CHARS = {
   Lizzie:{em:'🦎', hp:120, atk:1, note:'Tough scales, extra health'},
   Willow:{em:'🌿', hp:100, atk:2, note:'Balanced and calm'},
@@ -180,7 +183,7 @@ function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el(
 const playAgain = () => { location.search ? location.search='' : location.reload(); };
 const rnd = n => Math.floor(Math.random()*n);
 let G = { char:null, foe:null, wand:null };
-let youHP, youMax, foeHP, foeMax, youShield, deathLeft=1, foeDeathLeft=1, foeCharging=false, turn=0, busy=false, done=false, lastRegen=0;
+let youHP, youMax, foeHP, foeMax, youShield, dodging=false, deathLeft=1, dodgeLeft=2, foeDeathLeft=1, foeCharging=false, turn=0, busy=false, done=false, lastRegen=0;
 
 // ---- build selection grids ----
 function tile(em, name, note, cb){
@@ -193,6 +196,7 @@ Object.entries(FOES).forEach(([n,f])=> el('enemyGrid').append(tile(f.em,n,f.atk+
 Object.entries(WANDS).forEach(([n,w])=> el('wandGrid').append(tile(w.em,n,w.note,()=>{ G.wand=n; startBattle(); })));
 
 function show(id){ ['s-char','s-enemy','s-wand','s-battle'].forEach(s=> el(s).hidden = s!==id); }
+function updateDodge(){ el('dodgeBtn').textContent=`💨 Dodge (${dodgeLeft})`; el('dodgeBtn').disabled = dodgeLeft<=0; }
 
 // ---- battle ----
 function startBattle(){
@@ -200,8 +204,8 @@ function startBattle(){
   youMax=youHP=c.hp; foeMax=foeHP=f.hp;
   el('youEm').textContent=c.em; el('youName').textContent=G.char;
   el('foeEm').textContent=f.em; el('foeName').textContent=G.foe;
-  turn=0; busy=false; done=false; deathLeft=1; foeDeathLeft=1; foeCharging=false; youShield=false;
-  lastRegen=0; el('arenaLine').textContent='Round 1';
+  turn=0; busy=false; done=false; deathLeft=1; dodgeLeft=2; dodging=false; foeDeathLeft=1; foeCharging=false; youShield=false;
+  lastRegen=0; el('arenaLine').textContent='Round 1'; updateDodge();
   log(`${c.em} ${G.char} raises the ${G.wand} wand against ${f.em} ${G.foe}!`);
   show('s-battle'); refresh();
 }
@@ -211,6 +215,7 @@ function refresh(){
   el('youHpTxt').textContent = Math.max(0,youHP)+' hp';
   el('foeHpTxt').textContent = Math.max(0,foeHP)+' hp';
 }
+function flash(who){ const em=el(who==='foe'?'foeEm':'youEm'); em.classList.remove('hit'); void em.offsetWidth; em.classList.add('hit'); }
 function log(msg){ const d=document.createElement('div'); d.textContent=msg; const L=el('log');
   L.append(d); while(L.children.length>4) L.firstChild.remove(); }
 
@@ -218,19 +223,25 @@ const atkBonus = () => CHARS[G.char].atk + WANDS[G.wand].atk;
 
 document.querySelectorAll('.spell').forEach(b=> b.onclick=()=> playerAct(b.dataset.act));
 
+function clearCharge(){ foeCharging=false; el('banner').hidden=true; el('deathBtn').classList.remove('charge'); el('dodgeBtn').classList.remove('charge'); }
+
 function playerAct(act){
   if(busy||done) return;
-  // answer to the enemy's killing curse
+  // answer to the enemy's killing curse: Death Spell or Dodge
   if(foeCharging){
-    if(act==='death' && deathLeft>0){ deathLeft=0; foeCharging=false; el('banner').hidden=true; el('deathBtn').textContent='☠️ Death Spell (used)'; el('deathBtn').classList.remove('charge');
+    if(act==='death' && deathLeft>0){ deathLeft=0; el('deathBtn').textContent='☠️ Death Spell (used)'; clearCharge();
       log('☠️ Your curses collide in mid-air and cancel out! You survive.'); return enemyTurn(); }
-    else { return finish(false, `${G.foe} completes the Killing Curse. You had to answer with your own Death Spell.`); }
+    if(act==='dodge' && dodgeLeft>0){ dodgeLeft--; updateDodge(); clearCharge();
+      log('💨 You dive aside and dodge the Killing Curse!'); return enemyTurn(); }
+    return finish(false, `${G.foe} completes the Killing Curse. Answer it with your Death Spell or a Dodge.`);
   }
   busy=true;
   if(act==='death'){ if(deathLeft<=0 || turn<3){ log('☠️ Death Spell unlocks after round 3.'); busy=false; return; } deathLeft=0; el('deathBtn').textContent='☠️ Death Spell (used)';
-    log('☠️ You cast the forbidden Death Spell!'); return finish(true, `${G.foe} is struck down. You win.`); }
-  if(act==='flame'){ const d=14+atkBonus()+rnd(6); foeHP-=d; log(`🔥 Flame Jet hits for ${d}.`); }
-  else if(act==='bolt'){ const d=9+atkBonus()+rnd(4); foeHP-=d; log(`⚡ Spark Bolt strikes for ${d}.`); }
+    log('☠️ You cast the forbidden Death Spell!'); flash('foe'); return finish(true, `${G.foe} is struck down. You win.`); }
+  if(act==='dodge'){ if(dodgeLeft<=0){ busy=false; return; } dodgeLeft--; dodging=true; updateDodge();
+    log('💨 You get light on your feet, ready to dodge.'); refresh(); return enemyTurn(); }
+  if(act==='flame'){ const d=14+atkBonus()+rnd(6); foeHP-=d; flash('foe'); log(`🔥 Flame Jet hits for ${d}.`); }
+  else if(act==='bolt'){ const d=9+atkBonus()+rnd(4); foeHP-=d; flash('foe'); log(`⚡ Spark Bolt strikes for ${d}.`); }
   else if(act==='shield'){ youShield=true; log('🛡️ You raise a shield for the next hit.'); }
   else if(act==='heal'){ const h=14+rnd(8); youHP=Math.min(youMax,youHP+h); log(`✨ Mend restores ${h} hp.`); }
   refresh();
@@ -251,15 +262,19 @@ function enemyTurn(){
     // random chance to charge the one-time killing curse
     if(foeDeathLeft>0 && turn>=3 && Math.random() < 0.14 + turn*0.05){
       foeDeathLeft=0; foeCharging=true;
-      el('banner').hidden=false; el('banner').textContent=`⚠️ ${G.foe} is casting the Killing Curse! Answer with your Death Spell now!`;
-      el('deathBtn').classList.add('charge');
-      log(`⚠️ ${G.foe} begins the Killing Curse...`);
+      el('banner').hidden=false; el('banner').textContent=`${G.foe} is casting the Killing Curse! Answer with Death Spell or Dodge!`;
+      el('deathBtn').classList.add('charge'); el('dodgeBtn').classList.add('charge');
+      log(`${G.foe} begins the Killing Curse...`);
       busy=false; return;                       // player must respond
     }
     // normal action: mostly attack, sometimes shield
     if(Math.random()<0.2){ log(`${G.foe} braces behind a shield.`); }
-    else{ let d=FOES[G.foe].atk+rnd(6); if(youShield){ d=Math.round(d*(WANDS[G.wand].def?WANDS[G.wand].def:0.4)); youShield=false; log('🛡️ Your shield absorbs the blow!'); }
-      youHP-=d; log(`${FOES[G.foe].em} ${G.foe} hits you for ${d}.`); }
+    else{
+      let d=FOES[G.foe].atk+rnd(6);
+      if(dodging){ dodging=false; log(`💨 You dodge ${G.foe}'s attack completely!`); }
+      else{ if(youShield){ d=Math.round(d*(WANDS[G.wand].def?WANDS[G.wand].def:0.4)); youShield=false; log('🛡️ Your shield absorbs the blow!'); }
+        youHP-=d; flash('you'); log(`${FOES[G.foe].em} ${G.foe} hits you for ${d}.`); }
+    }
     refresh();
     if(youHP<=0) return finish(false, `${G.char} is defeated by ${G.foe}.`);
     busy=false;
@@ -268,7 +283,7 @@ function enemyTurn(){
 
 function finish(win, text){
   done=true; busy=false; refresh();
-  el('endTitle').textContent = win ? '✨ Victory!' : '💀 Defeated';
+  el('endTitle').textContent = win ? 'VICTORY!' : 'DEFEATED';
   el('endTitle').style.color = win ? 'var(--good)' : 'var(--bad)';
   el('endText').textContent = text;
   pendingScore = (win?100:0) + Math.max(0, foeMax - Math.max(0,foeHP));
