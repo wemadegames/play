@@ -176,8 +176,13 @@ function scheduler(){ while(nextT < actx.currentTime + 0.12){ const s=mstep%8;
   nextT += EIGHTH; mstep++; } }
 function startMusic(){ if(!musicOn) return; try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){ return; }
   if(schedTimer) return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(scheduler,25); }
-function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } }
-el('muteBtn').onclick=()=>{ musicOn=!musicOn; el('muteBtn').textContent='Music: '+(musicOn?'On':'Off'); musicOn?startMusic():stopMusic(); };
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
+const playing = () => state==='play' || state==='throwing';
+try{ if(localStorage.getItem('arcade_music')==='0'){ musicOn=false; el('muteBtn').textContent='Music: Off'; } }catch(e){}
+el('muteBtn').onclick=()=>{ musicOn=!musicOn; el('muteBtn').textContent='Music: '+(musicOn?'On':'Off');
+  try{ localStorage.setItem('arcade_music', musicOn?'1':'0'); }catch(e){}
+  (musicOn && playing()) ? startMusic() : stopMusic(); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && playing()) startMusic(); });
 
 /* ---------- leaderboard ---------- */
 const LB='lb_dodgelunch';
@@ -204,15 +209,15 @@ const prox = () => Math.max(0, Math.min(1, (START_Y - player.y)/(START_Y - REACH
 /* ---------- input ---------- */
 const keys=new Set();
 const KMAP={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
-addEventListener('keydown',e=>{ const k=KMAP[e.key]; if(k){ e.preventDefault(); keys.add(k); startMusic(); } });
+addEventListener('keydown',e=>{ if(e.target && e.target.tagName==='INPUT') return; const k=KMAP[e.key]; if(k){ e.preventDefault(); keys.add(k); } });
 addEventListener('keyup',e=>{ const k=KMAP[e.key]; if(k) keys.delete(k); });
 document.querySelectorAll('.pad button').forEach(b=>{ const d=b.dataset.dir;
-  const dn=e=>{ e.preventDefault(); keys.add(d); startMusic(); }, up=e=>{ e.preventDefault(); keys.delete(d); };
+  const dn=e=>{ e.preventDefault(); keys.add(d); }, up=e=>{ e.preventDefault(); keys.delete(d); };
   b.addEventListener('touchstart',dn,{passive:false}); b.addEventListener('touchend',up); b.addEventListener('touchcancel',up);
   b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up); b.addEventListener('mouseleave',up); });
 
 /* ---------- flow ---------- */
-el('startBtn').onclick=()=>{ startMusic(); el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
+el('startBtn').onclick=()=>{ el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
 document.querySelectorAll('.pbtn').forEach(b=> b.onclick=()=>{ who=b.dataset.who; el('pick').classList.add('hidden');
   reset(); state='play'; last=performance.now(); startMusic(); });
 el('againBtn').onclick=()=>{ el('over').classList.add('hidden'); el('pick').classList.remove('hidden'); };
@@ -221,7 +226,7 @@ el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim()
 addEventListener('keydown',e=>{ if(state==='over' && e.key==='Enter' && !(e.target&&e.target.tagName==='INPUT')) el('againBtn').click(); });
 
 function endGame(win){
-  state='over';
+  stopMusic(); state='over';
   pendingScore = win ? Math.max(60, Math.floor(520 - elapsed*15)) + lives*90 : 0;
   saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save'; el('nameIn').disabled=false; el('nameIn').value='';
   el('overTitle').textContent = win ? 'You got her!' : 'Splat!';

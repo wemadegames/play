@@ -25,6 +25,7 @@
   .back:hover{ color:var(--text); border-color:var(--muted); }
   .hud{ display:flex; justify-content:space-between; font-size:12px; }
   .hud b{ color:var(--accent); } .buf{ color:var(--buf); } .eag{ color:var(--eag); }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:32px; cursor:pointer; }
   #msg{ text-align:center; font-size:13px; min-height:18px; color:var(--accent); }
   .stage{ position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; background:#0c1a13; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
@@ -75,7 +76,7 @@
   <aside class="board"><span class="board-lbl">Buffalo</span><span class="board-num" id="scoreL">0</span></aside>
   <div class="wrap">
     <a class="back" href="../index.html">&larr; Arcade</a>
-    <div class="hud"><span><span class="buf">Buffalo</span> vs <span class="eag">Eagles</span></span><span>Score <b id="score">0</b></span><span>Heat <b id="heat">1</b></span></div>
+    <div class="hud"><span><span class="buf">Buffalo</span> vs <span class="eag">Eagles</span></span><span>Score <b id="score">0</b></span><span>Heat <b id="heat">1</b></span><button id="muteBtn" class="mute">Music: On</button></div>
     <div id="msg">Set your power, then press F to throw</div>
     <div class="stage">
       <canvas id="game"></canvas>
@@ -126,6 +127,28 @@ const cv=document.getElementById('game'), ctx=cv.getContext('2d');
 cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
 const el=id=>document.getElementById(id);
 
+/* ---- background music (Web Audio, shared Music toggle) ---- */
+let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
+const MEIGHTH=60/150/2, MBASS=[110,110,131,165,110,98,131,165], MLEAD=[440,523,659,523,587,523,440,659];
+function mtone(f,d,ty,v,w){ if(!f||!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type=ty; o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,w); g.gain.linearRampToValueAtTime(v,w+0.01); g.gain.exponentialRampToValueAtTime(0.0001,w+d);
+  o.connect(g).connect(actx.destination); o.start(w); o.stop(w+d+0.02); }
+function mkick(w){ if(!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,w); o.frequency.exponentialRampToValueAtTime(45,w+0.11);
+  g.gain.setValueAtTime(0.4,w); g.gain.exponentialRampToValueAtTime(0.0001,w+0.14); o.connect(g).connect(actx.destination); o.start(w); o.stop(w+0.15); }
+function msched(){ while(nextT<actx.currentTime+0.12){ const s=mstep%8; if(s%2===0)mkick(nextT);
+  mtone(MBASS[s],MEIGHTH*1.6,'triangle',0.15,nextT); mtone(MLEAD[s],MEIGHTH*0.8,'square',0.05,nextT); nextT+=MEIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn)return; try{ if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+  if(schedTimer)return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(msched,25); }
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
+function isPlaying(){ return state==='throw'||state==='ball'||state==='run'||state==='extra'||state==='explode'; }
+try{ if(localStorage.getItem('arcade_music')==='0') musicOn=false; }catch(e){}
+(function(){ const b=el('muteBtn'); if(!b)return; b.textContent='Music: '+(musicOn?'On':'Off');
+  b.onclick=()=>{ musicOn=!musicOn; b.textContent='Music: '+(musicOn?'On':'Off'); try{ localStorage.setItem('arcade_music',musicOn?'1':'0'); }catch(e){}
+    (musicOn && isPlaying())?startMusic():stopMusic(); }; })();
+['keydown','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(musicOn && isPlaying()) startMusic(); },{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && isPlaying()) startMusic(); });
+
 // ---- leaderboard (saved on this device) ----
 const LB='lb_footballfusion';
 function getLB(){ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } }
@@ -164,11 +187,11 @@ function newPlay(keepScore){
   line=[]; for(let i=0;i<10;i++) line.push({x:24+i*34, y:H-24});   // Buffalo line (decor)
   el('overlay').classList.add('hidden');
   setScore();
-  msg('Set power with R/Q, press F to throw');
+  msg('Set power with R/Q, press F to throw'); startMusic();
 }
 const msg = t => el('msg').textContent=t;
 function setScore(){ const s=''+score; el('score').textContent=s; el('scoreL').textContent=s; el('scoreR').textContent=s; }
-const over = (title,text,btn)=>{ const o=el('overlay'); o.classList.remove('hidden');
+const over = (title,text,btn)=>{ stopMusic(); const o=el('overlay'); o.classList.remove('hidden');
   o.querySelector('h1').textContent=title; o.querySelector('p').textContent=text; el('start').textContent=btn;
   pendingScore=score; saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save';
   el('nameIn').disabled=false; el('nameIn').value='';
