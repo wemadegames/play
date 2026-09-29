@@ -103,7 +103,7 @@ const GUN_GOAL = 50;     // obstacles to pass before the gun appears
 const BAR_EVERY = 5000;   // color bar pops every 5s
 const BAR_WINDOW = 1800;  // ms you have to tap up
 const HOP_MS = 130;       // base time between hops
-const POLICE_SPEED = 1.1; // rows per second the cops advance
+const POLICE_SPEED = 0.95; // rows per second the cops advance (eased so you are not forced to rush)
 
 // ---- Board ----
 const TILE = 16, COLS = 11, W = COLS*TILE, H = 15*TILE, PLAYER_Y = 10*TILE;
@@ -129,15 +129,16 @@ function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el(
 
 // ---- Deterministic per-row values ----
 const rnd = n => { const x = Math.sin(n*127.1+311.7)*43758.5; return x - Math.floor(x); };
-const rowType = R => R<3 ? 'grass' : (R%5===0 ? 'grass' : (R%7===0 ? 'fire' : 'road'));
+// Roads come in pairs, then two calm grass rows, so you are not dodging on every single row.
+const rowType = R => { if(R<3) return 'grass'; const m=R%4; if(m>=2) return 'grass'; if(R%7===0) return 'fire'; return 'road'; };
 
 const lanes = {};
 function lane(R){
   if(rowType(R)!=='road') return null;
   if(!lanes[R]){
     const dir = R%2===0 ? 1 : -1;
-    const speed = 12 + rnd(R)*14;                  // slower traffic
-    const span = (3 + Math.floor(rnd(R+3)*3))*TILE;
+    const speed = 8 + rnd(R)*8;                    // slower traffic
+    const span = (5 + Math.floor(rnd(R+3)*3))*TILE; // bigger gaps: fewer cars, clear lanes to run through
     const cars = [];
     const off = rnd(R+9)*span;
     for(let x=-TILE; x<W+TILE; x+=span) cars.push(x+off);
