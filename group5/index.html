@@ -8,9 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
-  /* ===== Dodge the Lunch (Group 5) — cafeteria food dodger ===== */
-  :root{ --bg:#241b16; --panel:#33271f; --cream:#fff4e0; --text:#fff4e0; --muted:#c8b39c;
-    --sauce:#e63b2e; --sauce-d:#b62518; --drink:#38b6ff; --border:#120c08; }
+  /* ===== Dodge the Lunch (Group 5) — reach the lunch lady, dodge her throws ===== */
+  :root{ --bg:#241b16; --panel:#33271f; --text:#fff4e0; --muted:#c8b39c;
+    --sauce:#e63b2e; --sauce-d:#b62518; --border:#120c08; }
   *{ box-sizing:border-box; }
   [hidden]{ display:none!important; }
   body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
@@ -18,31 +18,32 @@
   .wrap{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:10px; }
   .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:8px 10px 8px 0; font-size:12px; text-decoration:none; color:var(--muted); }
   .back:hover{ color:var(--sauce); }
-  .hud{ display:flex; justify-content:space-between; align-items:center; font-size:13px; }
-  .hud b{ color:var(--sauce); } #lives{ letter-spacing:2px; } #power{ color:var(--drink); }
-  .stage{ position:relative; border:3px solid var(--border); border-radius:8px; overflow:hidden; background:#f3eee2; }
+  .hud{ display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:13px; }
+  .hud b{ color:var(--sauce); } #power{ color:#7fd0ff; }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px;
+    font-family:inherit; font-size:11px; padding:4px 8px; min-height:32px; cursor:pointer; }
+  .stage{ position:relative; border:3px solid var(--border); border-radius:8px; overflow:hidden; background:#cbb79a; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
 
   .overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:12px; padding:22px; text-align:center; background:rgba(20,12,8,.9); }
+    gap:12px; padding:22px; text-align:center; }
   .overlay.hidden{ display:none; }
-  .lady{ font-size:64px; line-height:1; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+  #start{ background:rgba(20,12,8,.45); }                 /* translucent so the lunch lady shows behind */
+  #pick, #over{ background:rgba(20,12,8,.92); }
   .overlay h1{ margin:0; font-family:"Press Start 2P",monospace; font-size:clamp(15px,5vw,20px); line-height:1.5; color:var(--sauce); text-shadow:2px 2px 0 #000; }
-  .overlay p{ margin:0; font-size:13px; color:var(--muted); max-width:28ch; line-height:1.5; }
+  .overlay p{ margin:0; font-size:13px; color:var(--text); max-width:28ch; line-height:1.5; text-shadow:0 1px 2px #000; }
 
-  /* the play button, splattered with sauce */
   .sauce{ position:relative; margin-top:6px; padding:14px 34px; min-height:48px; border:none; border-radius:12px;
-    background:var(--sauce); color:#fff; font-family:"Press Start 2P",monospace; font-size:13px; cursor:pointer;
-    box-shadow:0 5px 0 var(--sauce-d); }
+    background:var(--sauce); color:#fff; font-family:"Press Start 2P",monospace; font-size:13px; cursor:pointer; box-shadow:0 5px 0 var(--sauce-d); }
   .sauce:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--sauce-d); }
   .sauce::before, .sauce::after{ content:""; position:absolute; background:var(--sauce); border-radius:50%; z-index:-1; }
   .sauce::before{ width:22px; height:22px; left:-8px; top:-6px; box-shadow:12px 30px 0 -4px var(--sauce), 60px -10px 0 -2px var(--sauce); }
   .sauce::after{ width:16px; height:16px; right:-6px; bottom:-8px; box-shadow:-30px 8px 0 -2px var(--sauce), 20px -34px 0 -3px var(--sauce); }
 
   .players{ display:flex; gap:14px; }
-  .pbtn{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 18px; min-height:44px; cursor:pointer;
-    border:3px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text); font-family:inherit; font-size:13px; }
-  .pbtn:hover{ border-color:var(--sauce); } .pbtn .big{ font-size:40px; }
+  .pbtn{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 16px; min-height:44px; cursor:pointer;
+    border:3px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
+  .pbtn:hover{ border-color:var(--sauce); } .pbtn canvas{ width:56px; height:72px; }
 
   .save{ display:flex; gap:8px; width:100%; max-width:280px; }
   .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:3px solid var(--border); border-radius:8px;
@@ -53,7 +54,6 @@
   .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid #4a3a2e; }
   .lbrow.empty{ justify-content:center; color:var(--muted); }
 
-  /* touch dpad */
   .pad{ display:grid; grid-template-columns:repeat(3,52px); grid-template-rows:repeat(2,52px); gap:6px; justify-content:center; }
   .pad button{ border:3px solid var(--border); background:var(--panel); color:var(--text); border-radius:8px; font-size:18px; font-family:inherit; cursor:pointer; }
   .pad .u{ grid-column:2; grid-row:1; } .pad .l{ grid-column:1; grid-row:2; } .pad .d{ grid-column:2; grid-row:2; } .pad .r{ grid-column:3; grid-row:2; }
@@ -64,28 +64,28 @@
 <body>
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
-  <div class="hud"><span>Score <b id="score">0</b></span><span id="lives">❤️❤️❤️</span><span id="power">&nbsp;</span></div>
+  <div class="hud"><span>Score <b id="score">0</b></span><span>Lives <b id="lives">3</b></span><span id="power">&nbsp;</span>
+    <button id="muteBtn" class="mute">Music: On</button></div>
   <div class="stage">
     <canvas id="game"></canvas>
 
     <div id="start" class="overlay">
-      <div class="lady">👩‍🍳😠</div>
       <h1>Dodge the Lunch</h1>
-      <p>The lunch lady is angry and she is throwing food. Dodge it and grab the energy drink for a shield.</p>
+      <p>The lunch lady is angry. Run up to her, dodge the food she throws, and get her.</p>
       <button class="sauce" id="startBtn">PLAY</button>
     </div>
 
     <div id="pick" class="overlay hidden">
       <h1>Choose your player</h1>
       <div class="players">
-        <button class="pbtn" data-who="boy"><span class="big">👦</span>Oscar</button>
-        <button class="pbtn" data-who="girl"><span class="big">👧</span>Girl</button>
+        <button class="pbtn" data-who="boy"><canvas id="pcvBoy" width="56" height="72"></canvas>Boy</button>
+        <button class="pbtn" data-who="girl"><canvas id="pcvGirl" width="56" height="72"></canvas>Girl</button>
       </div>
     </div>
 
     <div id="over" class="overlay hidden">
       <h1 id="overTitle">Splat!</h1>
-      <p id="overText">The lunch lady got you.</p>
+      <p id="overText"></p>
       <div id="saveRow" class="save" hidden>
         <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name">
         <button id="saveBtn" class="btn2">Save</button>
@@ -99,20 +99,87 @@
     <button class="u" data-dir="up">▲</button><button class="l" data-dir="left">◀</button>
     <button class="d" data-dir="down">▼</button><button class="r" data-dir="right">▶</button>
   </div>
-  <p class="foot">Arrow keys or WASD to move. Dodge the food.</p>
+  <p class="foot">Arrow keys or WASD. Get up to the lunch lady.</p>
 </div>
 
 <script>
 /* ===== Dodge the Lunch ===== */
-const W=320, H=440;
+const W=320, H=460;
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
 cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
 const el=id=>document.getElementById(id);
 const rnd=(a,b)=>a+Math.random()*(b-a);
-const FOODS=['🍕','🍔','🍟','🌭','🍩','🥪','🌮','🧁'];
-const LADY_X=W/2, LADY_Y=42;
+const LADY_X=W/2, LADY_FEET=70, THROW_Y=44;
+const START_Y=H-30, REACH_Y=112;
 
-// ---- leaderboard ----
+/* ---------- drawn sprites (no emojis) ---------- */
+function drawKid(g, cx, feetY, who, walk){
+  const skin='#f0c090', shoe='#33261c';
+  const hair = who==='boy' ? '#4a3120' : '#6a3d22';
+  const cloth = who==='boy' ? '#3aa0ff' : '#ff6fae';
+  const legc = who==='boy' ? '#2b3a67' : skin;
+  const sw = Math.sin(walk)*3;
+  g.fillStyle=legc; g.fillRect(cx-5, feetY-13, 4, 13 - Math.max(0,sw));
+  g.fillStyle=legc; g.fillRect(cx+1, feetY-13, 4, 13 - Math.max(0,-sw));
+  g.fillStyle=shoe; g.fillRect(cx-6, feetY-2, 5,2); g.fillRect(cx+1, feetY-2, 5,2);
+  if(who==='girl'){ g.fillStyle=cloth; g.beginPath(); g.moveTo(cx,feetY-27); g.lineTo(cx-10,feetY-11); g.lineTo(cx+10,feetY-11); g.closePath(); g.fill(); }
+  else { g.fillStyle=cloth; g.fillRect(cx-7, feetY-27, 14, 16); }
+  g.fillStyle=skin; g.fillRect(cx-9, feetY-26, 3, 11); g.fillRect(cx+6, feetY-26, 3, 11);   // arms
+  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-32, 6, 0, 7); g.fill();                   // head
+  g.fillStyle=hair; g.beginPath(); g.arc(cx, feetY-34, 6, Math.PI, 0); g.fill();
+  if(who==='girl'){ g.fillRect(cx-8, feetY-34, 2.5, 12); g.fillRect(cx+5, feetY-34, 2.5, 12); }
+  g.fillStyle='#2a2a2a'; g.fillRect(cx-3, feetY-33, 1.6,1.6); g.fillRect(cx+2, feetY-33, 1.6,1.6);
+}
+function drawLady(g, cx, feetY, t, splat){
+  const skin='#f0c090';
+  const arm = Math.sin(t/140)*6;
+  g.fillStyle='#3a2a22'; g.fillRect(cx-13, feetY-6, 26, 6);                 // shoes/base
+  g.fillStyle='#c53030'; g.fillRect(cx-16, feetY-36, 32, 30);              // dress
+  g.fillStyle='#fbeee0'; g.fillRect(cx-11, feetY-32, 22, 24);             // apron
+  g.fillStyle=skin; g.fillRect(cx-21, feetY-34, 5, 15); g.fillRect(cx+16, feetY-34-arm, 5, 15); // arms
+  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-46, 10, 0, 7); g.fill();  // head
+  g.fillStyle='#fff'; g.beginPath(); g.ellipse(cx, feetY-57, 12, 8, 0, 0, 7); g.fill(); g.fillRect(cx-10, feetY-55, 20, 7); // hat
+  // angry face
+  g.strokeStyle='#7a4a2a'; g.lineWidth=2; g.beginPath();
+  g.moveTo(cx-8,feetY-50); g.lineTo(cx-2,feetY-48); g.moveTo(cx+8,feetY-50); g.lineTo(cx+2,feetY-48); g.stroke();
+  g.fillStyle='#2a2a2a'; g.fillRect(cx-5,feetY-47,2.4,2.4); g.fillRect(cx+3,feetY-47,2.4,2.4);
+  g.strokeStyle='#7a4a2a'; g.beginPath(); g.moveTo(cx-4,feetY-40); g.quadraticCurveTo(cx,feetY-43,cx+4,feetY-40); g.stroke(); // frown
+  if(splat){ g.fillStyle='rgba(230,59,46,.85)'; for(let i=0;i<7;i++){ g.beginPath(); g.arc(cx+rnd(-14,14), feetY-46+rnd(-12,12), rnd(2,5), 0,7); g.fill(); } }
+}
+function drawFood(g,f){
+  g.save(); g.translate(f.x,f.y); g.rotate(f.rot); const s=9;
+  if(f.type==='pizza'){ g.fillStyle='#e8b24a'; g.beginPath(); g.moveTo(0,-s); g.lineTo(-s,s); g.lineTo(s,s); g.closePath(); g.fill();
+    g.fillStyle='#d33'; g.beginPath(); g.arc(-3,2,1.8,0,7); g.arc(3,4,1.8,0,7); g.fill(); }
+  else if(f.type==='burger'){ g.fillStyle='#e0a55a'; g.fillRect(-s,-s+2,2*s,5); g.fillRect(-s,s-4,2*s,4);
+    g.fillStyle='#7a4a2a'; g.fillRect(-s,-1,2*s,4); g.fillStyle='#5ad06a'; g.fillRect(-s,3,2*s,2); }
+  else if(f.type==='fries'){ g.fillStyle='#d33'; g.fillRect(-6,0,12,s+1); g.fillStyle='#ffd23f'; for(let i=-4;i<=4;i+=3) g.fillRect(i,-s+1,2,s+1); }
+  else { g.fillStyle='#ff9ec9'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.fillStyle='#cbb79a'; g.beginPath(); g.arc(0,0,3,0,7); g.fill(); }
+  g.restore();
+}
+function drawDrink(g,d){ g.save(); g.translate(d.x,d.y);
+  g.fillStyle='#1a8fd0'; g.fillRect(-6,-9,12,18); g.fillStyle='#ffd23f'; g.fillRect(-6,-2,12,4);
+  g.fillStyle='rgba(255,255,255,.6)'; g.fillRect(-4,-9,2,18); g.restore(); }
+
+/* ---------- background music (Web Audio, competitive loop) ---------- */
+let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
+const TEMPO=152, EIGHTH=60/TEMPO/2;
+const BASS=[110,110,131,165, 110,98,131,165];
+const LEAD=[440,523,659,523, 587,523,440,659];
+function tone(freq,dur,type,vol,when){ if(!freq||!actx) return; const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(0.0001,when); g.gain.linearRampToValueAtTime(vol,when+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,when+dur); o.connect(g).connect(actx.destination); o.start(when); o.stop(when+dur+0.02); }
+function kick(when){ if(!actx) return; const o=actx.createOscillator(), g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,when); o.frequency.exponentialRampToValueAtTime(45,when+0.11);
+  g.gain.setValueAtTime(0.45,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.14); o.connect(g).connect(actx.destination); o.start(when); o.stop(when+0.15); }
+function scheduler(){ while(nextT < actx.currentTime + 0.12){ const s=mstep%8;
+  if(s%2===0) kick(nextT); tone(BASS[s], EIGHTH*1.6,'triangle',0.16,nextT); tone(LEAD[s], EIGHTH*0.8,'square',0.06,nextT);
+  nextT += EIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn) return; try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){ return; }
+  if(schedTimer) return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(scheduler,25); }
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } }
+el('muteBtn').onclick=()=>{ musicOn=!musicOn; el('muteBtn').textContent='Music: '+(musicOn?'On':'Off'); musicOn?startMusic():stopMusic(); };
+
+/* ---------- leaderboard ---------- */
 const LB='lb_dodgelunch';
 const getLB=()=>{ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } };
 function addScore(name,sc){ const a=getLB(); a.push({name:(name||'YOU').slice(0,8),score:sc});
@@ -122,105 +189,119 @@ function renderLB(){ const a=getLB(); el('lbPanel').innerHTML='<div class="lbh">
            : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
 const fitsTop5=sc=>{ const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
 
-// ---- state ----
-let state='start', who='boy', player, foods, drinks, lives, score, elapsed, spawnT, drinkT, shieldUntil, invulnUntil, last=0, pendingScore=0, saved=false;
+/* ---------- state ---------- */
+let state='start', who='boy', player, foods, drinks, lives, elapsed, spawnT, drinkT, shieldUntil, invulnUntil,
+    last=0, walk=0, pendingScore=0, saved=false, throwFood=null, throwUntil=0, ladyT=0;
 
 function reset(){
-  player={ x:W/2, y:H-46, size:28 };
-  foods=[]; drinks=[]; lives=3; score=0; elapsed=0; spawnT=0; drinkT=6; shieldUntil=0; invulnUntil=0;
-  updateHud();
+  player={ x:W/2, y:START_Y }; foods=[]; drinks=[]; lives=3; elapsed=0; spawnT=0.6; drinkT=7;
+  shieldUntil=0; invulnUntil=0; throwFood=null; updateHud();
 }
-function updateHud(){ el('score').textContent=Math.floor(score);
-  el('lives').textContent='❤️'.repeat(Math.max(0,lives)); }
+function updateHud(){ el('lives').textContent=Math.max(0,lives);
+  el('score').textContent=(state==='play'||state==='throwing')? Math.max(0,Math.floor(520-elapsed*15)) : Math.floor(pendingScore); }
+const prox = () => Math.max(0, Math.min(1, (START_Y - player.y)/(START_Y - REACH_Y)));
 
-// ---- input ----
+/* ---------- input ---------- */
 const keys=new Set();
 const KMAP={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
-addEventListener('keydown',e=>{ const k=KMAP[e.key]; if(k){ e.preventDefault(); keys.add(k); } });
+addEventListener('keydown',e=>{ const k=KMAP[e.key]; if(k){ e.preventDefault(); keys.add(k); startMusic(); } });
 addEventListener('keyup',e=>{ const k=KMAP[e.key]; if(k) keys.delete(k); });
 document.querySelectorAll('.pad button').forEach(b=>{ const d=b.dataset.dir;
-  const dn=e=>{ e.preventDefault(); keys.add(d); }, up=e=>{ e.preventDefault(); keys.delete(d); };
+  const dn=e=>{ e.preventDefault(); keys.add(d); startMusic(); }, up=e=>{ e.preventDefault(); keys.delete(d); };
   b.addEventListener('touchstart',dn,{passive:false}); b.addEventListener('touchend',up); b.addEventListener('touchcancel',up);
   b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up); b.addEventListener('mouseleave',up); });
 
-// ---- flow ----
-el('startBtn').onclick=()=>{ el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
+/* ---------- flow ---------- */
+el('startBtn').onclick=()=>{ startMusic(); el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
 document.querySelectorAll('.pbtn').forEach(b=> b.onclick=()=>{ who=b.dataset.who; el('pick').classList.add('hidden');
-  reset(); state='play'; last=performance.now(); });
+  reset(); state='play'; last=performance.now(); startMusic(); });
 el('againBtn').onclick=()=>{ el('over').classList.add('hidden'); el('pick').classList.remove('hidden'); };
 el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore); saved=true;
   el('saveBtn').disabled=true; el('saveBtn').textContent='✓'; el('nameIn').disabled=true; renderLB(); };
 addEventListener('keydown',e=>{ if(state==='over' && e.key==='Enter' && !(e.target&&e.target.tagName==='INPUT')) el('againBtn').click(); });
 
-function gameOver(){
-  state='over'; pendingScore=Math.floor(score); saved=false;
-  el('saveBtn').disabled=false; el('saveBtn').textContent='Save'; el('nameIn').disabled=false; el('nameIn').value='';
-  el('overText').textContent = `You scored ${pendingScore}. The lunch lady wins this round.`;
-  const top=fitsTop5(pendingScore); el('saveRow').hidden=!top; renderLB();
+function endGame(win){
+  state='over';
+  pendingScore = win ? Math.max(60, Math.floor(520 - elapsed*15)) + lives*90 : 0;
+  saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save'; el('nameIn').disabled=false; el('nameIn').value='';
+  el('overTitle').textContent = win ? 'You got her!' : 'Splat!';
+  el('overText').textContent = win ? `You reached the lunch lady and let her have it. Score ${pendingScore}.`
+                                   : `The lunch lady wore you down. She wins this round.`;
+  const top = win && fitsTop5(pendingScore); el('saveRow').hidden=!top; renderLB();
   el('over').classList.remove('hidden');
 }
 
-// ---- update ----
+/* ---------- update ---------- */
 function update(dt, now){
-  score += dt*10; elapsed += dt;
-  const speed = 130 + elapsed*7;                 // food falls faster over time
-  // move player
-  const sp = 3.2;
+  if(state==='throwing'){ if(throwFood){ throwFood.y += throwFood.vy*dt; throwFood.rot+=8*dt; } ladyT+=dt*300;
+    if(now>throwUntil) endGame(true); return; }
+
+  elapsed += dt;
+  const sp=3.0;
   if(keys.has('left')) player.x-=sp; if(keys.has('right')) player.x+=sp;
   if(keys.has('up')) player.y-=sp; if(keys.has('down')) player.y+=sp;
   player.x=Math.max(16,Math.min(W-16,player.x));
-  player.y=Math.max(H*0.42,Math.min(H-18,player.y));
+  player.y=Math.max(REACH_Y,Math.min(START_Y+4,player.y));
+  if(keys.size) walk+=dt*14;
+  const pcy = player.y-16;
 
-  // the lunch lady throws food
+  // reached the lunch lady -> throw food at her and win
+  if(player.y<=REACH_Y+2 && Math.abs(player.x-LADY_X)<46){
+    state='throwing'; throwUntil=now+950;
+    throwFood={ x:player.x, y:pcy, vy:-320, rot:0, type:'pizza' };
+    return;
+  }
+
+  // the lunch lady throws, aimed at the player, faster the closer you are
+  const p=prox();
   spawnT-=dt;
-  if(spawnT<=0){ spawnT=Math.max(0.32, 0.95 - elapsed*0.02);
-    foods.push({ x:LADY_X+rnd(-16,16), y:LADY_Y+18, vx:rnd(-70,70), vy:speed*rnd(.8,1.1), em:FOODS[Math.floor(rnd(0,FOODS.length))], size:26 }); }
-  // occasional energy drink
+  if(spawnT<=0){ spawnT = 0.85 - p*0.45;
+    const speed = 115 + p*155;                      // average throw, ramps up near her
+    const ang = Math.atan2(pcy-THROW_Y, player.x-LADY_X) + rnd(-0.22,0.22);
+    foods.push({ x:LADY_X+rnd(-10,10), y:THROW_Y+10, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
+      type:['pizza','burger','fries','donut'][Math.floor(rnd(0,4))], rot:rnd(0,6.28), spin:rnd(-6,6) }); }
   drinkT-=dt;
-  if(drinkT<=0){ drinkT=rnd(7,11); drinks.push({ x:rnd(30,W-30), y:-16, vy:110, em:'🥤', size:26 }); }
+  if(drinkT<=0){ drinkT=rnd(7,11); drinks.push({ x:rnd(30,W-30), y:-16, vy:105 }); }
 
   const shielded = now<shieldUntil;
-  // move + collide foods
-  for(let i=foods.length-1;i>=0;i--){ const f=foods[i]; f.x+=f.vx*dt; f.y+=f.vy*dt;
-    if(f.x<10||f.x>W-10) f.vx*=-1;
-    if(f.y>H+20){ foods.splice(i,1); continue; }
-    if(Math.hypot(f.x-player.x,f.y-player.y) < 17){
+  for(let i=foods.length-1;i>=0;i--){ const f=foods[i]; f.x+=f.vx*dt; f.y+=f.vy*dt; f.rot+=f.spin*dt;
+    if(f.x<-16||f.x>W+16||f.y>H+16){ foods.splice(i,1); continue; }
+    if(Math.hypot(f.x-player.x, f.y-pcy) < 15){
       if(shielded){ foods.splice(i,1); continue; }
-      if(now>invulnUntil){ foods.splice(i,1); lives--; invulnUntil=now+1200; updateHud();
-        if(lives<=0){ return gameOver(); } }
+      if(now>invulnUntil){ foods.splice(i,1); lives--; invulnUntil=now+1200; updateHud(); if(lives<=0){ return endGame(false); } }
     }
   }
-  // move + collect drinks
   for(let i=drinks.length-1;i>=0;i--){ const d=drinks[i]; d.y+=d.vy*dt;
-    if(d.y>H+20){ drinks.splice(i,1); continue; }
-    if(Math.hypot(d.x-player.x,d.y-player.y) < 18){ drinks.splice(i,1); shieldUntil=now+4500; score+=50; updateHud(); }
-  }
-  el('power').innerHTML = now<shieldUntil ? '🛡️ '+Math.ceil((shieldUntil-now)/1000)+'s' : '&nbsp;';
+    if(d.y>H+16){ drinks.splice(i,1); continue; }
+    if(Math.hypot(d.x-player.x, d.y-pcy) < 17){ drinks.splice(i,1); shieldUntil=now+4500; } }
+  el('power').innerHTML = now<shieldUntil ? 'Shield '+Math.ceil((shieldUntil-now)/1000)+'s' : '&nbsp;';
+  updateHud();
 }
 
-// ---- draw ----
+/* ---------- draw ---------- */
+function bg(){
+  for(let y=0;y<H;y+=24) for(let x=0;x<W;x+=24){ ctx.fillStyle=((x/24+y/24)%2)?'#d8c6a4':'#cdba95'; ctx.fillRect(x,y,24,24); }
+  ctx.fillStyle='#9a8f78'; ctx.fillRect(0,0,W,26);            // back wall trim
+}
 function draw(now){
-  // cafeteria
-  for(let y=0;y<H;y+=26) for(let x=0;x<W;x+=26){ ctx.fillStyle=((x/26+y/26)%2)?'#efe7d6':'#e6dcc6'; ctx.fillRect(x,y,26,26); }
-  ctx.fillStyle='#b9bec8'; ctx.fillRect(0,0,W,72);          // serving counter
-  ctx.fillStyle='#9aa0ab'; ctx.fillRect(0,68,W,6);
-  ctx.font='40px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('👩‍🍳', LADY_X, LADY_Y);                       // lunch lady
-
-  for(const d of drinks){ ctx.font=d.size+'px serif'; ctx.fillText(d.em,d.x,d.y); }
-  for(const f of foods){ ctx.font=f.size+'px serif'; ctx.fillText(f.em,f.x,f.y); }
-
-  if(player){
+  bg();
+  const splat = state==='throwing' && now>throwUntil-600;
+  drawLady(ctx, LADY_X, LADY_FEET, ladyT+=1, splat);
+  for(const d of drinks) drawDrink(ctx,d);
+  for(const f of foods) drawFood(ctx,f);
+  if(throwFood) drawFood(ctx, throwFood);
+  if(player && state!=='start'){
     const blink = now<invulnUntil && Math.floor(now/120)%2===0;
-    if(now<shieldUntil){ ctx.beginPath(); ctx.arc(player.x,player.y-2,20,0,7); ctx.fillStyle='rgba(56,182,255,.28)'; ctx.fill(); }
-    if(!blink){ ctx.font=player.size+'px serif'; ctx.fillText(who==='boy'?'👦':'👧', player.x, player.y); }
-  }
+    if(now<shieldUntil){ ctx.beginPath(); ctx.arc(player.x,player.y-16,19,0,7); ctx.fillStyle='rgba(127,208,255,.28)'; ctx.fill(); }
+    if(!blink) drawKid(ctx, player.x, player.y, who, walk);
+  } else if(state==='start'){ drawKid(ctx, W/2, START_Y, 'boy', 0); }
 }
+function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state==='play'||state==='throwing') update(dt,ts); draw(ts); requestAnimationFrame(loop); }
 
-function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state==='play') update(dt,ts); draw(ts); requestAnimationFrame(loop); }
-
-// idle scene behind the start screen
-reset(); player=null; requestAnimationFrame(loop); player={ x:W/2, y:H-46, size:28 };
+/* pick-screen previews + idle scene */
+drawKid(document.getElementById('pcvBoy').getContext('2d'), 28, 68, 'boy', 0);
+drawKid(document.getElementById('pcvGirl').getContext('2d'), 28, 68, 'girl', 0);
+reset(); player=null; requestAnimationFrame(loop); player={ x:W/2, y:START_Y };
 </script>
 </body>
 </html>
