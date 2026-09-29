@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dodge the Lunch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* ===== Dodge the Lunch (Group 5) — cafeteria food dodger ===== */
+  :root{ --bg:#241b16; --panel:#33271f; --cream:#fff4e0; --text:#fff4e0; --muted:#c8b39c;
+    --sauce:#e63b2e; --sauce-d:#b62518; --drink:#38b6ff; --border:#120c08; }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none!important; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
+    background:var(--bg); color:var(--text); font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
+  .wrap{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:10px; }
+  .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:8px 10px 8px 0; font-size:12px; text-decoration:none; color:var(--muted); }
+  .back:hover{ color:var(--sauce); }
+  .hud{ display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+  .hud b{ color:var(--sauce); } #lives{ letter-spacing:2px; } #power{ color:var(--drink); }
+  .stage{ position:relative; border:3px solid var(--border); border-radius:8px; overflow:hidden; background:#f3eee2; }
+  canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
+
+  .overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px; padding:22px; text-align:center; background:rgba(20,12,8,.9); }
+  .overlay.hidden{ display:none; }
+  .lady{ font-size:64px; line-height:1; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+  .overlay h1{ margin:0; font-family:"Press Start 2P",monospace; font-size:clamp(15px,5vw,20px); line-height:1.5; color:var(--sauce); text-shadow:2px 2px 0 #000; }
+  .overlay p{ margin:0; font-size:13px; color:var(--muted); max-width:28ch; line-height:1.5; }
+
+  /* the play button, splattered with sauce */
+  .sauce{ position:relative; margin-top:6px; padding:14px 34px; min-height:48px; border:none; border-radius:12px;
+    background:var(--sauce); color:#fff; font-family:"Press Start 2P",monospace; font-size:13px; cursor:pointer;
+    box-shadow:0 5px 0 var(--sauce-d); }
+  .sauce:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--sauce-d); }
+  .sauce::before, .sauce::after{ content:""; position:absolute; background:var(--sauce); border-radius:50%; z-index:-1; }
+  .sauce::before{ width:22px; height:22px; left:-8px; top:-6px; box-shadow:12px 30px 0 -4px var(--sauce), 60px -10px 0 -2px var(--sauce); }
+  .sauce::after{ width:16px; height:16px; right:-6px; bottom:-8px; box-shadow:-30px 8px 0 -2px var(--sauce), 20px -34px 0 -3px var(--sauce); }
+
+  .players{ display:flex; gap:14px; }
+  .pbtn{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 18px; min-height:44px; cursor:pointer;
+    border:3px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text); font-family:inherit; font-size:13px; }
+  .pbtn:hover{ border-color:var(--sauce); } .pbtn .big{ font-size:40px; }
+
+  .save{ display:flex; gap:8px; width:100%; max-width:280px; }
+  .save input{ flex:1; min-width:0; min-height:44px; padding:9px 10px; border:3px solid var(--border); border-radius:8px;
+    background:var(--panel); color:var(--text); font-family:inherit; font-size:14px; }
+  .btn2{ padding:0 16px; min-height:44px; border:3px solid var(--border); border-radius:8px; background:var(--sauce); color:#fff; font-family:inherit; font-weight:600; cursor:pointer; }
+  .lb{ width:100%; max-width:240px; font-size:12px; text-align:left; }
+  .lbh{ text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; }
+  .lbrow{ display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid #4a3a2e; }
+  .lbrow.empty{ justify-content:center; color:var(--muted); }
+
+  /* touch dpad */
+  .pad{ display:grid; grid-template-columns:repeat(3,52px); grid-template-rows:repeat(2,52px); gap:6px; justify-content:center; }
+  .pad button{ border:3px solid var(--border); background:var(--panel); color:var(--text); border-radius:8px; font-size:18px; font-family:inherit; cursor:pointer; }
+  .pad .u{ grid-column:2; grid-row:1; } .pad .l{ grid-column:1; grid-row:2; } .pad .d{ grid-column:2; grid-row:2; } .pad .r{ grid-column:3; grid-row:2; }
+  .foot{ font-size:11px; color:var(--muted); text-align:center; }
+  @media(min-width:769px){ .pad{ display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">&larr; Arcade</a>
+  <div class="hud"><span>Score <b id="score">0</b></span><span id="lives">❤️❤️❤️</span><span id="power">&nbsp;</span></div>
+  <div class="stage">
+    <canvas id="game"></canvas>
+
+    <div id="start" class="overlay">
+      <div class="lady">👩‍🍳😠</div>
+      <h1>Dodge the Lunch</h1>
+      <p>The lunch lady is angry and she is throwing food. Dodge it and grab the energy drink for a shield.</p>
+      <button class="sauce" id="startBtn">PLAY</button>
+    </div>
+
+    <div id="pick" class="overlay hidden">
+      <h1>Choose your player</h1>
+      <div class="players">
+        <button class="pbtn" data-who="boy"><span class="big">👦</span>Oscar</button>
+        <button class="pbtn" data-who="girl"><span class="big">👧</span>Girl</button>
+      </div>
+    </div>
+
+    <div id="over" class="overlay hidden">
+      <h1 id="overTitle">Splat!</h1>
+      <p id="overText">The lunch lady got you.</p>
+      <div id="saveRow" class="save" hidden>
+        <input id="nameIn" maxlength="8" placeholder="Top 5! Name" aria-label="Your name">
+        <button id="saveBtn" class="btn2">Save</button>
+      </div>
+      <div id="lbPanel" class="lb"></div>
+      <button class="sauce" id="againBtn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div class="pad">
+    <button class="u" data-dir="up">▲</button><button class="l" data-dir="left">◀</button>
+    <button class="d" data-dir="down">▼</button><button class="r" data-dir="right">▶</button>
+  </div>
+  <p class="foot">Arrow keys or WASD to move. Dodge the food.</p>
+</div>
+
+<script>
+/* ===== Dodge the Lunch ===== */
+const W=320, H=440;
+const cv=document.getElementById('game'), ctx=cv.getContext('2d');
+cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
+const el=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const FOODS=['🍕','🍔','🍟','🌭','🍩','🥪','🌮','🧁'];
+const LADY_X=W/2, LADY_Y=42;
+
+// ---- leaderboard ----
+const LB='lb_dodgelunch';
+const getLB=()=>{ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } };
+function addScore(name,sc){ const a=getLB(); a.push({name:(name||'YOU').slice(0,8),score:sc});
+  a.sort((x,y)=>y.score-x.score); a.splice(5); try{ localStorage.setItem(LB,JSON.stringify(a)); }catch(e){} return a; }
+function renderLB(){ const a=getLB(); el('lbPanel').innerHTML='<div class="lbh">Top scores</div>'+
+  (a.length? a.map((r,i)=>`<div class="lbrow"><span>${i+1}. ${r.name}</span><span>${r.score}</span></div>`).join('')
+           : '<div class="lbrow empty">No scores yet. Be the first.</div>'); }
+const fitsTop5=sc=>{ const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
+
+// ---- state ----
+let state='start', who='boy', player, foods, drinks, lives, score, elapsed, spawnT, drinkT, shieldUntil, invulnUntil, last=0, pendingScore=0, saved=false;
+
+function reset(){
+  player={ x:W/2, y:H-46, size:28 };
+  foods=[]; drinks=[]; lives=3; score=0; elapsed=0; spawnT=0; drinkT=6; shieldUntil=0; invulnUntil=0;
+  updateHud();
+}
+function updateHud(){ el('score').textContent=Math.floor(score);
+  el('lives').textContent='❤️'.repeat(Math.max(0,lives)); }
+
+// ---- input ----
+const keys=new Set();
+const KMAP={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+addEventListener('keydown',e=>{ const k=KMAP[e.key]; if(k){ e.preventDefault(); keys.add(k); } });
+addEventListener('keyup',e=>{ const k=KMAP[e.key]; if(k) keys.delete(k); });
+document.querySelectorAll('.pad button').forEach(b=>{ const d=b.dataset.dir;
+  const dn=e=>{ e.preventDefault(); keys.add(d); }, up=e=>{ e.preventDefault(); keys.delete(d); };
+  b.addEventListener('touchstart',dn,{passive:false}); b.addEventListener('touchend',up); b.addEventListener('touchcancel',up);
+  b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up); b.addEventListener('mouseleave',up); });
+
+// ---- flow ----
+el('startBtn').onclick=()=>{ el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
+document.querySelectorAll('.pbtn').forEach(b=> b.onclick=()=>{ who=b.dataset.who; el('pick').classList.add('hidden');
+  reset(); state='play'; last=performance.now(); });
+el('againBtn').onclick=()=>{ el('over').classList.add('hidden'); el('pick').classList.remove('hidden'); };
+el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore); saved=true;
+  el('saveBtn').disabled=true; el('saveBtn').textContent='✓'; el('nameIn').disabled=true; renderLB(); };
+addEventListener('keydown',e=>{ if(state==='over' && e.key==='Enter' && !(e.target&&e.target.tagName==='INPUT')) el('againBtn').click(); });
+
+function gameOver(){
+  state='over'; pendingScore=Math.floor(score); saved=false;
+  el('saveBtn').disabled=false; el('saveBtn').textContent='Save'; el('nameIn').disabled=false; el('nameIn').value='';
+  el('overText').textContent = `You scored ${pendingScore}. The lunch lady wins this round.`;
+  const top=fitsTop5(pendingScore); el('saveRow').hidden=!top; renderLB();
+  el('over').classList.remove('hidden');
+}
+
+// ---- update ----
+function update(dt, now){
+  score += dt*10; elapsed += dt;
+  const speed = 130 + elapsed*7;                 // food falls faster over time
+  // move player
+  const sp = 3.2;
+  if(keys.has('left')) player.x-=sp; if(keys.has('right')) player.x+=sp;
+  if(keys.has('up')) player.y-=sp; if(keys.has('down')) player.y+=sp;
+  player.x=Math.max(16,Math.min(W-16,player.x));
+  player.y=Math.max(H*0.42,Math.min(H-18,player.y));
+
+  // the lunch lady throws food
+  spawnT-=dt;
+  if(spawnT<=0){ spawnT=Math.max(0.32, 0.95 - elapsed*0.02);
+    foods.push({ x:LADY_X+rnd(-16,16), y:LADY_Y+18, vx:rnd(-70,70), vy:speed*rnd(.8,1.1), em:FOODS[Math.floor(rnd(0,FOODS.length))], size:26 }); }
+  // occasional energy drink
+  drinkT-=dt;
+  if(drinkT<=0){ drinkT=rnd(7,11); drinks.push({ x:rnd(30,W-30), y:-16, vy:110, em:'🥤', size:26 }); }
+
+  const shielded = now<shieldUntil;
+  // move + collide foods
+  for(let i=foods.length-1;i>=0;i--){ const f=foods[i]; f.x+=f.vx*dt; f.y+=f.vy*dt;
+    if(f.x<10||f.x>W-10) f.vx*=-1;
+    if(f.y>H+20){ foods.splice(i,1); continue; }
+    if(Math.hypot(f.x-player.x,f.y-player.y) < 17){
+      if(shielded){ foods.splice(i,1); continue; }
+      if(now>invulnUntil){ foods.splice(i,1); lives--; invulnUntil=now+1200; updateHud();
+        if(lives<=0){ return gameOver(); } }
+    }
+  }
+  // move + collect drinks
+  for(let i=drinks.length-1;i>=0;i--){ const d=drinks[i]; d.y+=d.vy*dt;
+    if(d.y>H+20){ drinks.splice(i,1); continue; }
+    if(Math.hypot(d.x-player.x,d.y-player.y) < 18){ drinks.splice(i,1); shieldUntil=now+4500; score+=50; updateHud(); }
+  }
+  el('power').innerHTML = now<shieldUntil ? '🛡️ '+Math.ceil((shieldUntil-now)/1000)+'s' : '&nbsp;';
+}
+
+// ---- draw ----
+function draw(now){
+  // cafeteria
+  for(let y=0;y<H;y+=26) for(let x=0;x<W;x+=26){ ctx.fillStyle=((x/26+y/26)%2)?'#efe7d6':'#e6dcc6'; ctx.fillRect(x,y,26,26); }
+  ctx.fillStyle='#b9bec8'; ctx.fillRect(0,0,W,72);          // serving counter
+  ctx.fillStyle='#9aa0ab'; ctx.fillRect(0,68,W,6);
+  ctx.font='40px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('👩‍🍳', LADY_X, LADY_Y);                       // lunch lady
+
+  for(const d of drinks){ ctx.font=d.size+'px serif'; ctx.fillText(d.em,d.x,d.y); }
+  for(const f of foods){ ctx.font=f.size+'px serif'; ctx.fillText(f.em,f.x,f.y); }
+
+  if(player){
+    const blink = now<invulnUntil && Math.floor(now/120)%2===0;
+    if(now<shieldUntil){ ctx.beginPath(); ctx.arc(player.x,player.y-2,20,0,7); ctx.fillStyle='rgba(56,182,255,.28)'; ctx.fill(); }
+    if(!blink){ ctx.font=player.size+'px serif'; ctx.fillText(who==='boy'?'👦':'👧', player.x, player.y); }
+  }
+}
+
+function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state==='play') update(dt,ts); draw(ts); requestAnimationFrame(loop); }
+
+// idle scene behind the start screen
+reset(); player=null; requestAnimationFrame(loop); player={ x:W/2, y:H-46, size:28 };
+</script>
+</body>
+</html>
