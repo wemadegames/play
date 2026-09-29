@@ -109,7 +109,7 @@
     <button class="u" data-act="up">▲</button><button class="l" data-act="left">◀</button>
     <button class="d" data-act="down">▼</button><button class="r" data-act="right">▶</button>
   </div>
-  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Freeze</b> Q &middot; <b>Boost</b> E &middot; cops only move when you move &middot; escape 5 mazes</p>
+  <p class="foot"><b>Move</b> WASD / arrows &middot; <b>Freeze</b> Q &middot; <b>Boost</b> E &middot; red cops chase, purple guard the exits &middot; reach any exit</p>
 </div>
 
 <script>
@@ -119,7 +119,7 @@ const DIMS = [0,7,8,9,10,11];              // maze size per level
 const cv = document.getElementById('game'), ctx = cv.getContext('2d');
 const el = id => document.getElementById(id);
 
-let lvl=1, mode='maze', returnLevel=1, m, player, exitC, cops, running=false, last=0, pendingLevel=0;
+let lvl=1, mode='maze', returnLevel=1, m, player, exitC, exits=[], cops, running=false, last=0, pendingLevel=0;
 let score=0, diff='easy', pendingScore=0, saved=false, resetOnStart=true;
 let moveCount=0, copEvery=2, freezeMoves=0, boostMoves=0, freezeCharges=2, boostCharges=2;  // cops step only when you move
 
@@ -182,32 +182,35 @@ function step(sx,sy,tx,ty){
   return [cur%cols, Math.floor(cur/cols)];
 }
 
-function exitPath(){
-  const path=new Set(), goal=m.idx(exitC.x,exitC.y);
-  let x=0,y=0;
-  for(let i=0;i<m.cols*m.rows && (x!==exitC.x||y!==exitC.y);i++){
-    path.add(m.idx(x,y)); const [nx,ny]=step(x,y,exitC.x,exitC.y); x=nx;y=ny;
-  }
-  path.add(goal); return path;
-}
+// three far corners as exits, so there are several ways out
+function cornerExits(cols){ const c=cols-1; return [{x:c,y:c},{x:c,y:0},{x:0,y:c}]; }
 function farCell(){
-  const options=[], safeRoute=exitPath();
+  const options=[];
   for(let y=0;y<m.rows;y++) for(let x=0;x<m.cols;x++){
-    if(x+y < m.cols || safeRoute.has(m.idx(x,y)) || Math.abs(x-exitC.x)+Math.abs(y-exitC.y)<3 ||
-       cops.some(o=>o.x===x && o.y===y)) continue;
+    if(x+y < m.cols) continue;                                     // away from the start corner
+    if(exits.some(e=>Math.abs(x-e.x)+Math.abs(y-e.y)<2)) continue; // not sitting on an exit
+    if(cops.some(o=>o.x===x && o.y===y)) continue;
     options.push({x,y});
   }
   return options[Math.floor(Math.random()*options.length)] || null;
 }
 
 function build(cols, jail){
-  m = genMaze(cols,cols); player={x:0,y:0}; exitC={x:cols-1,y:cols-1};
+  m = genMaze(cols,cols); player={x:0,y:0};
+  exits = cornerExits(cols); exitC = exits[0];
   cv.width=cols*TILE; cv.height=cols*TILE; ctx.imageSmoothingEnabled=false;
   cops=[]; moveCount=0; freezeMoves=0; boostMoves=0;
   freezeCharges=2; boostCharges=2;                       // abilities refresh each level
-  copEvery = diff==='easy' ? 4 : 3;                      // cops patrol less often than the player moves
-  const n=jail ? 3 : (lvl===5 ? 4 : 1+Math.floor((lvl-1)/2));
-  for(let i=0;i<n;i++){ const spawn=farCell(); if(spawn) cops.push(spawn); }   // later levels add cops
+  copEvery = diff==='easy' ? 3 : 2;                      // cops move more often now
+  const base = jail ? 4 : [0,2,3,3,4,5][lvl];            // more cops per level, easy included
+  const n = base + (diff==='hard' && !jail ? 1 : 0);     // hard packs one extra
+  for(let i=0;i<n;i++){ const spawn=farCell(); if(!spawn) break;
+    let type='patroller';                                // different kinds of cop
+    if(i===0) type='chaser';
+    else if(i===1 && lvl>=3) type='chaser';
+    else if(i===n-1 && (lvl>=4 || jail)) type='guard';
+    cops.push({x:spawn.x, y:spawn.y, type, exit:exits[i%exits.length]});
+  }
 }
 
 function updateHud(){ el('lvl').textContent=lvl; el('score').textContent=score; el('cops').textContent=cops.length; }
@@ -257,7 +260,7 @@ function tryMove(dir){
   else if(dir==='left'&&!c.w){ player.x--; moved=true; } else if(dir==='right'&&!c.e){ player.x++; moved=true; }
   if(!moved) return;                                     // into a wall = no move, so cops stay put
   if(freezeMoves<=0 && cops.some(o=>o.x===player.x&&o.y===player.y)) return caught();
-  if(player.x===exitC.x&&player.y===exitC.y) return reachedExit();
+  if(exits.some(e=>e.x===player.x&&e.y===player.y)) return reachedExit();
   moveCount++;
   let copsStep = (moveCount % copEvery === 0);
   if(freezeMoves>0){ freezeMoves--; copsStep=false; }   // police frozen
@@ -291,18 +294,22 @@ el('skipBtn').onclick=closeSave;
 // ---- cops + draw ----
 function stepCops(){
   for(const o of cops){
-    const c=m.cells[m.idx(o.x,o.y)], options=[];
-    if(!c.n) options.push([o.x,o.y-1]);
-    if(!c.e) options.push([o.x+1,o.y]);
-    if(!c.s) options.push([o.x,o.y+1]);
-    if(!c.w) options.push([o.x-1,o.y]);
-    // Patrol instead of following the shortest route to the player every turn.
-    // Never block the only exit, and keep each cop on a separate square.
-    const safeRoute=exitPath();
-    const open=options.filter(([x,y])=>!safeRoute.has(m.idx(x,y)) &&
-      (Math.abs(x-player.x)+Math.abs(y-player.y)>1) &&
-      !cops.some(other=>other!==o && other.x===x && other.y===y));
-    if(open.length){ const [nx,ny]=open[Math.floor(Math.random()*open.length)]; o.x=nx; o.y=ny; }
+    const c=m.cells[m.idx(o.x,o.y)], opts=[];
+    if(!c.n) opts.push([o.x,o.y-1]); if(!c.e) opts.push([o.x+1,o.y]);
+    if(!c.s) opts.push([o.x,o.y+1]); if(!c.w) opts.push([o.x-1,o.y]);
+    const taken = ([x,y]) => cops.some(k=>k!==o && k.x===x && k.y===y);
+    const wander = (opts.filter(p=>!taken(p)).length ? opts.filter(p=>!taken(p)) : opts);
+    const pickWander = () => wander[Math.floor(Math.random()*wander.length)];
+    let nx=o.x, ny=o.y;
+    if(o.type==='chaser'){                               // hunts you along the shortest path
+      const [sx,sy]=step(o.x,o.y,player.x,player.y);
+      if(!taken([sx,sy])){ nx=sx; ny=sy; } else { [nx,ny]=pickWander(); }
+    } else if(o.type==='guard'){                         // camps an exit, drifts nearby
+      const e=o.exit||exits[0];
+      if(Math.abs(o.x-e.x)+Math.abs(o.y-e.y)>1){ const [sx,sy]=step(o.x,o.y,e.x,e.y); if(!taken([sx,sy])){ nx=sx; ny=sy; } else { [nx,ny]=pickWander(); } }
+      else { [nx,ny]=pickWander(); }
+    } else { [nx,ny]=pickWander(); }                     // patroller wanders freely
+    o.x=nx; o.y=ny;
     if(o.x===player.x&&o.y===player.y){ caught(); return; }
   }
 }
@@ -310,7 +317,7 @@ function draw(){
   const {cols,rows,cells}=m;
   ctx.fillStyle='#0a0d13'; ctx.fillRect(0,0,cv.width,cv.height);
   ctx.fillStyle= mode==='jail' ? '#e2b23b' : '#5ad06a';
-  ctx.fillRect(exitC.x*TILE+3, exitC.y*TILE+3, TILE-6, TILE-6);
+  for(const e of exits) ctx.fillRect(e.x*TILE+3, e.y*TILE+3, TILE-6, TILE-6);
   ctx.strokeStyle= mode==='jail' ? '#4a3f24' : '#33415a'; ctx.lineWidth=2;
   for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){ const c=cells[y*cols+x], X=x*TILE, Y=y*TILE;
     ctx.beginPath();
@@ -321,7 +328,7 @@ function draw(){
     ctx.stroke();
   }
   const frozen = freezeMoves>0;
-  for(const o of cops){ ctx.fillStyle= frozen ? '#5ad6ff' : (o.guard?'#ff5a5a':'#3b7bff'); ctx.fillRect(o.x*TILE+4,o.y*TILE+4,TILE-8,TILE-8);
+  for(const o of cops){ ctx.fillStyle= frozen ? '#5ad6ff' : (o.type==='chaser'?'#ff5a5a':o.type==='guard'?'#c07bff':'#3b7bff'); ctx.fillRect(o.x*TILE+4,o.y*TILE+4,TILE-8,TILE-8);
     ctx.fillStyle='#0a0d13'; ctx.fillRect(o.x*TILE+6,o.y*TILE+5,TILE-12,3); }
   if(boostMoves>0){ ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2; ctx.strokeRect(player.x*TILE+2,player.y*TILE+2,TILE-4,TILE-4); }
   ctx.fillStyle='#ffd23f'; ctx.fillRect(player.x*TILE+4,player.y*TILE+4,TILE-8,TILE-8);
