@@ -173,12 +173,12 @@ function lane(R){
 const burning = (c,R,t) => rowType(R)==='fire' && ((Math.floor(t/700)+c*2+R)%3===0);
 
 // ---- State ----
-let player, maxRow, obstacles, boostUntil, slowUntil, sprained, armed, policeRow, lives, invuln;
+let player, maxRow, obstacles, boostUntil, slowUntil, sprained, sprainUntil, armed, policeRow, lives, invuln;
 let running=false, over=false, barOn=false, barLocked=false, lastBar=0, barZone=null, barFlash=0, last=0;
 
 function reset(){
   player = { col:5, row:0, colF:5, rowF:0, hop:0 };
-  maxRow=0; obstacles=0; boostUntil=0; slowUntil=0; sprained=false; armed=false; policeRow=-4; lives=3; invuln=0;
+  maxRow=0; obstacles=0; boostUntil=0; slowUntil=0; sprained=false; sprainUntil=0; armed=false; policeRow=-4; lives=3; invuln=0;
   for(const k in lanes) delete lanes[k];
   running=true; over=false; barOn=false; barLocked=false; lastBar=performance.now(); barZone=null; barFlash=0;
   fresh=false; el('tip').hidden=true;
@@ -212,7 +212,7 @@ function lockBar(now){
   barZone = z; barFlash = now+600;
   if(z==='green') boostUntil = now+3000;
   else if(z==='orange') slowUntil = now+3000;
-  else if(z==='red') sprained = true;
+  else if(z==='red'){ sprained = true; sprainUntil = now+6000; }   // sprain wears off after a few seconds
 }
 
 function fire(){ if(running && armed){ running=false; over=true; end('You escaped the police!', 'You grabbed the gun and took the cops down. Obstacles cleared: '+obstacles); } }
@@ -232,6 +232,7 @@ function end(title, text){
 
 // ---- Update ----
 function update(dt, now){
+  if(sprained && now>=sprainUntil) sprained=false;                 // recover from the sprain
   if(now-lastBar >= BAR_EVERY && !barOn){ barOn=true; barLocked=false; lastBar=now; }
   if(barOn && now-lastBar > BAR_WINDOW) barOn=false;
 
