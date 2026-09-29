@@ -249,8 +249,8 @@ function update(dt){
     ball.t=Math.min(1, ball.t+dt*1.15);
     wr.x+=(ball.to.x-wr.x)*0.08; wr.y+=(ball.to.y-wr.y)*0.08;
     if(ball.t>=1){
-      if(wantCatch && dist(wr,ball.to)<34){ state='run'; msg('CAUGHT! Run to the end zone (WASD).'); }
-      else { state='done'; nextPlay('Incomplete.'); }
+      if(wantCatch && dist(wr,ball.to)<40){ state='run'; msg('CAUGHT! Run to the end zone (WASD).'); }
+      else { state='done'; nextPlay(wantCatch ? 'So close! Get under the ball next time.' : 'Incomplete - tap F while the ball is in the air.'); }
     }
   }
   else if(state==='run'){
@@ -305,6 +305,10 @@ function draw(){
     if(state==='run'){ ctx.fillStyle='#8b5a2b'; ctx.beginPath(); ctx.ellipse(wr.x,wr.y-11,4,6,0,0,7); ctx.fill(); }
   }
 
+  if(state==='ball'&&ball.to){ const t=ball.t, r=8+(1-t)*26;      // catch target: shows where and when to tap
+    ctx.strokeStyle= t>0.65?'#ffd23f':'#5aa0ff'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(ball.to.x,ball.to.y,r,0,7); ctx.stroke();
+    if(t>0.5){ ctx.fillStyle='#ffd23f'; ctx.font='9px monospace'; ctx.textAlign='center'; ctx.fillText('TAP F',ball.to.x,ball.to.y-r-4); } }
   if(state==='ball'&&ball.live){ const t=ball.t, x=ball.from.x+(ball.to.x-ball.from.x)*t,
       y=ball.from.y+(ball.to.y-ball.from.y)*t - Math.sin(t*Math.PI)*40;
     ctx.fillStyle='#8b5a2b'; ctx.beginPath(); ctx.ellipse(x,y,4,7,0,0,7); ctx.fill(); }

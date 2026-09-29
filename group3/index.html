@@ -122,7 +122,7 @@
           <div class="bar"><i id="youBar" style="width:100%"></i></div></div></div>
     </div>
     <div class="actions">
-      <button class="spell" data-act="flame">🔥 Flame Jet<small>heavy hit</small></button>
+      <button class="spell" id="flameBtn" data-act="flame">🔥 Flame Jet<small>heavy hit, recharges</small></button>
       <button class="spell" data-act="bolt">⚡ Spark Bolt<small>quick strike</small></button>
       <button class="spell" data-act="shield">🛡️ Shield<small>soften the next hit</small></button>
       <button class="spell" data-act="heal">✨ Mend<small>heal yourself</small></button>
@@ -207,7 +207,7 @@ function closeSave(){ el('saveRow').hidden=true; el('saveHint').hidden=true; el(
 const playAgain = () => { location.search ? location.search='' : location.reload(); };
 const rnd = n => Math.floor(Math.random()*n);
 let G = { char:null, foe:null, wand:null };
-let youHP, youMax, foeHP, foeMax, youShield, dodging=false, deathLeft=1, dodgeLeft=2, foeDeathLeft=1, foeCharging=false, turn=0, busy=false, done=false, lastRegen=0;
+let youHP, youMax, foeHP, foeMax, youShield, dodging=false, deathLeft=1, dodgeLeft=2, foeDeathLeft=1, foeCharging=false, turn=0, busy=false, done=false, lastRegen=0, flameCd=0;
 
 // ---- build selection grids ----
 function tile(em, name, note, cb){
@@ -221,6 +221,7 @@ Object.entries(WANDS).forEach(([n,w])=> el('wandGrid').append(tile(w.em,n,w.note
 
 function show(id){ ['s-char','s-enemy','s-wand','s-battle'].forEach(s=> el(s).hidden = s!==id); }
 function updateDodge(){ el('dodgeBtn').textContent=`💨 Dodge (${dodgeLeft})`; el('dodgeBtn').disabled = dodgeLeft<=0; }
+function updateFlame(){ const b=el('flameBtn'); if(b) b.disabled = flameCd>0; }
 
 // ---- battle ----
 function startBattle(){
@@ -228,8 +229,8 @@ function startBattle(){
   youMax=youHP=c.hp; foeMax=foeHP=f.hp;
   el('youEm').textContent=c.em; el('youName').textContent=G.char;
   el('foeEm').textContent=f.em; el('foeName').textContent=G.foe;
-  turn=0; busy=false; done=false; deathLeft=1; dodgeLeft=2; dodging=false; foeDeathLeft=1; foeCharging=false; youShield=false;
-  lastRegen=0; el('arenaLine').textContent='Round 1'; updateDodge();
+  turn=0; busy=false; done=false; deathLeft=1; dodgeLeft=2; dodging=false; foeDeathLeft=1; foeCharging=false; youShield=false; flameCd=0;
+  lastRegen=0; el('arenaLine').textContent='Round 1'; updateDodge(); updateFlame();
   log(`${c.em} ${G.char} raises the ${G.wand} wand against ${f.em} ${G.foe}!`);
   show('s-battle'); refresh();
 }
@@ -265,7 +266,7 @@ function playerAct(act){
     log('☠️ You cast the forbidden Death Spell!'); flash('foe'); return finish(true, `${G.foe} is struck down. You win.`); }
   if(act==='dodge'){ if(dodgeLeft<=0){ busy=false; return; } dodgeLeft--; dodging=true; updateDodge();
     log('💨 You get light on your feet, ready to dodge.'); refresh(); return enemyTurn(); }
-  if(act==='flame'){ const d=14+atkBonus()+rnd(6); foeHP-=d; flash('foe'); log(`🔥 Flame Jet hits for ${d}.`); }
+  if(act==='flame'){ if(flameCd>0){ busy=false; return; } const d=14+atkBonus()+rnd(6); foeHP-=d; flash('foe'); flameCd=2; updateFlame(); log(`🔥 Flame Jet hits for ${d}.`); }
   else if(act==='bolt'){ const d=9+atkBonus()+rnd(4); foeHP-=d; flash('foe'); log(`⚡ Spark Bolt strikes for ${d}.`); }
   else if(act==='shield'){ youShield=true; log('🛡️ You raise a shield for the next hit.'); }
   else if(act==='heal'){ const h=14+rnd(8); youHP=Math.min(youMax,youHP+h); log(`✨ Mend restores ${h} hp.`); }
@@ -278,6 +279,7 @@ function enemyTurn(){
   busy=true;
   setTimeout(()=>{
     turn++;
+    if(flameCd>0){ flameCd--; updateFlame(); }               // Flame Jet recharges over turns
     // difficulty curve: the enemy regrows more health each round
     const regen = Math.min(6, Math.floor(turn/3));
     if(regen>0){ foeHP=Math.min(foeMax, foeHP+regen);
