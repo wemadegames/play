@@ -18,6 +18,7 @@
   .back:hover{ color:var(--text); border-color:var(--muted); }
   .hud{ display:flex; justify-content:space-between; gap:8px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
   .hud b{ color:var(--accent); } .hud .jail{ color:var(--jail); }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:32px; cursor:pointer; }
   .stage{ position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; background:#0a0d13; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
 
@@ -78,7 +79,7 @@
 <body>
 <div class="wrap">
   <a class="back" href="../index.html">&larr; Arcade</a>
-  <div class="hud"><span>Level <b id="lvl">1</b>/5</span><span>Score <b id="score">0</b></span><span>Cops <b id="cops">1</b></span><span id="mode">Maze</span></div>
+  <div class="hud"><span>Level <b id="lvl">1</b>/5</span><span>Score <b id="score">0</b></span><span>Cops <b id="cops">1</b></span><span id="mode">Maze</span><button id="muteBtn" class="mute">Music: On</button></div>
   <div class="stage">
     <canvas id="game"></canvas>
     <div id="tip" class="tip">Press an arrow (or tap &#9650;) to start</div>
@@ -118,6 +119,28 @@ const TILE = 20;
 const DIMS = [0,7,8,9,10,11];              // maze size per level
 const cv = document.getElementById('game'), ctx = cv.getContext('2d');
 const el = id => document.getElementById(id);
+
+/* ---- background music (Web Audio, shared Music toggle) ---- */
+let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
+const MEIGHTH=60/150/2, MBASS=[110,110,131,165,110,98,131,165], MLEAD=[440,523,659,523,587,523,440,659];
+function mtone(f,d,ty,v,w){ if(!f||!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type=ty; o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,w); g.gain.linearRampToValueAtTime(v,w+0.01); g.gain.exponentialRampToValueAtTime(0.0001,w+d);
+  o.connect(g).connect(actx.destination); o.start(w); o.stop(w+d+0.02); }
+function mkick(w){ if(!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,w); o.frequency.exponentialRampToValueAtTime(45,w+0.11);
+  g.gain.setValueAtTime(0.4,w); g.gain.exponentialRampToValueAtTime(0.0001,w+0.14); o.connect(g).connect(actx.destination); o.start(w); o.stop(w+0.15); }
+function msched(){ while(nextT<actx.currentTime+0.12){ const s=mstep%8; if(s%2===0)mkick(nextT);
+  mtone(MBASS[s],MEIGHTH*1.6,'triangle',0.15,nextT); mtone(MLEAD[s],MEIGHTH*0.8,'square',0.05,nextT); nextT+=MEIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn)return; try{ if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+  if(schedTimer)return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(msched,25); }
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
+function isPlaying(){ return running; }
+try{ if(localStorage.getItem('arcade_music')==='0') musicOn=false; }catch(e){}
+(function(){ const b=el('muteBtn'); if(!b)return; b.textContent='Music: '+(musicOn?'On':'Off');
+  b.onclick=()=>{ musicOn=!musicOn; b.textContent='Music: '+(musicOn?'On':'Off'); try{ localStorage.setItem('arcade_music',musicOn?'1':'0'); }catch(e){}
+    (musicOn && isPlaying())?startMusic():stopMusic(); }; })();
+['keydown','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(musicOn && isPlaying()) startMusic(); },{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && isPlaying()) startMusic(); });
 
 let lvl=1, mode='maze', returnLevel=1, m, player, exitC, exits=[], cops, running=false, last=0, pendingLevel=0;
 let score=0, diff='easy', pendingScore=0, saved=false, resetOnStart=true;
@@ -222,6 +245,7 @@ function loadJail(){ returnLevel=lvl; mode='jail'; el('mode').textContent='JAIL'
 
 // mode: 'menu' (start), 'result' (run ended, offer to save score), 'pause' (mid-run, just continue)
 function setOverlay(modeName, title, text){
+  stopMusic();
   const ov=el('overlay'); ov.classList.remove('hidden');
   el('ovTitle').textContent=title; el('ovText').textContent=text;
   el('lbPanel').hidden = modeName==='pause';
@@ -339,7 +363,7 @@ el('start').addEventListener('click',()=>{
   fresh=false; el('tip').hidden=true; closeSave(); lockDiff(true);
   el('overlay').classList.add('hidden');
   if(resetOnStart) score=0;
-  loadLevel(pendingLevel||1); pendingLevel=0; updateHud(); running=true; updateAbil(); last=performance.now();
+  loadLevel(pendingLevel||1); pendingLevel=0; updateHud(); running=true; updateAbil(); last=performance.now(); startMusic();
 });
 
 // idle backdrop + starting menu

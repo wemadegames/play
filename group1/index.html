@@ -18,6 +18,7 @@
   .hud{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
   .hud .label{ color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
   .hud b{ color:var(--accent); }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:32px; cursor:pointer; }
   .stage{ position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; background:#000; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
   .overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -64,6 +65,7 @@
     <span><span class="label">Lives</span> <b id="lives">3</b></span>
     <span><span class="label">Heat</span> <b id="heat">1</b></span>
     <span id="state" class="label">Run</span>
+    <button id="muteBtn" class="mute">Music: On</button>
   </div>
 
   <div class="stage">
@@ -114,6 +116,28 @@ cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
 const CARS = ['#e2413b','#39b7c9','#b56bd6','#eaeaea','#f0862a','#5ad06a'];
 const el = id => document.getElementById(id);
 
+/* ---- background music (Web Audio, shared Music toggle) ---- */
+let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
+const MEIGHTH=60/150/2, MBASS=[110,110,131,165,110,98,131,165], MLEAD=[440,523,659,523,587,523,440,659];
+function mtone(f,d,ty,v,w){ if(!f||!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type=ty; o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,w); g.gain.linearRampToValueAtTime(v,w+0.01); g.gain.exponentialRampToValueAtTime(0.0001,w+d);
+  o.connect(g).connect(actx.destination); o.start(w); o.stop(w+d+0.02); }
+function mkick(w){ if(!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,w); o.frequency.exponentialRampToValueAtTime(45,w+0.11);
+  g.gain.setValueAtTime(0.4,w); g.gain.exponentialRampToValueAtTime(0.0001,w+0.14); o.connect(g).connect(actx.destination); o.start(w); o.stop(w+0.15); }
+function msched(){ while(nextT<actx.currentTime+0.12){ const s=mstep%8; if(s%2===0)mkick(nextT);
+  mtone(MBASS[s],MEIGHTH*1.6,'triangle',0.15,nextT); mtone(MLEAD[s],MEIGHTH*0.8,'square',0.05,nextT); nextT+=MEIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn)return; try{ if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+  if(schedTimer)return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(msched,25); }
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
+function isPlaying(){ return running; }
+try{ if(localStorage.getItem('arcade_music')==='0') musicOn=false; }catch(e){}
+(function(){ const b=el('muteBtn'); if(!b)return; b.textContent='Music: '+(musicOn?'On':'Off');
+  b.onclick=()=>{ musicOn=!musicOn; b.textContent='Music: '+(musicOn?'On':'Off'); try{ localStorage.setItem('arcade_music',musicOn?'1':'0'); }catch(e){}
+    (musicOn && isPlaying())?startMusic():stopMusic(); }; })();
+['keydown','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(musicOn && isPlaying()) startMusic(); },{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && isPlaying()) startMusic(); });
+
 // ---- leaderboard (saved on this device) ----
 const LB='lb_escapethepolice';
 function getLB(){ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } }
@@ -159,7 +183,7 @@ function reset(){
   running=true; over=false; barOn=false; barLocked=false; lastBar=performance.now(); barZone=null; barFlash=0;
   fresh=false; el('tip').hidden=true;
   el('overlay').classList.add('hidden'); el('fireBtn').classList.add('hidden'); closeSave();
-  last = performance.now();
+  last = performance.now(); startMusic();
 }
 
 const cooldown = now => HOP_MS*(sprained?1.8:1)*(now<boostUntil?0.5:1)*(now<slowUntil?1.7:1);
@@ -194,6 +218,7 @@ function lockBar(now){
 function fire(){ if(running && armed){ running=false; over=true; end('You escaped the police!', 'You grabbed the gun and took the cops down. Obstacles cleared: '+obstacles); } }
 
 function end(title, text){
+  stopMusic();
   el('overlay').classList.remove('hidden');
   el('overlay').querySelector('h1').textContent = title;
   el('overlay').querySelector('p').textContent = text;

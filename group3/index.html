@@ -22,6 +22,8 @@
   .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:10px 12px; min-height:44px;
     font-size:12px; text-decoration:none; color:var(--muted); border:3px solid var(--border); background:var(--panel); box-shadow:3px 3px 0 rgba(0,0,0,.4); }
   .back:hover{ color:var(--gold); }
+  .toprow{ display:flex; justify-content:space-between; align-items:center; }
+  .mute{ border:2px solid var(--border); background:var(--panel); color:var(--muted); font-family:"Silkscreen",monospace; font-size:11px; padding:5px 8px; min-height:32px; cursor:pointer; }
 
   .title{ text-align:center; }
   .title .eyebrow{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
@@ -88,7 +90,7 @@
 </head>
 <body>
 <div class="wrap">
-  <a class="back" href="../index.html">&larr; Arcade</a>
+  <div class="toprow"><a class="back" href="../index.html">&larr; Arcade</a><button id="muteBtn" class="mute">Music: On</button></div>
   <div class="title"><div class="eyebrow">Spellbound</div><h1>Spellbound Academy</h1></div>
   <p class="intro">You're already in the duel. Tap a spell to cast. The enemy regrows a little more health every round - finish it fast.</p>
 
@@ -168,6 +170,28 @@ const WANDS = {
 
 const el = id => document.getElementById(id);
 
+/* ---- background music (Web Audio, shared Music toggle) ---- */
+let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
+const MEIGHTH=60/150/2, MBASS=[110,110,131,165,110,98,131,165], MLEAD=[440,523,659,523,587,523,440,659];
+function mtone(f,d,ty,v,w){ if(!f||!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type=ty; o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,w); g.gain.linearRampToValueAtTime(v,w+0.01); g.gain.exponentialRampToValueAtTime(0.0001,w+d);
+  o.connect(g).connect(actx.destination); o.start(w); o.stop(w+d+0.02); }
+function mkick(w){ if(!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,w); o.frequency.exponentialRampToValueAtTime(45,w+0.11);
+  g.gain.setValueAtTime(0.4,w); g.gain.exponentialRampToValueAtTime(0.0001,w+0.14); o.connect(g).connect(actx.destination); o.start(w); o.stop(w+0.15); }
+function msched(){ while(nextT<actx.currentTime+0.12){ const s=mstep%8; if(s%2===0)mkick(nextT);
+  mtone(MBASS[s],MEIGHTH*1.6,'triangle',0.15,nextT); mtone(MLEAD[s],MEIGHTH*0.8,'square',0.05,nextT); nextT+=MEIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn)return; try{ if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+  if(schedTimer)return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(msched,25); }
+function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
+function isPlaying(){ return !done && !el('s-battle').hidden; }
+try{ if(localStorage.getItem('arcade_music')==='0') musicOn=false; }catch(e){}
+(function(){ const b=el('muteBtn'); if(!b)return; b.textContent='Music: '+(musicOn?'On':'Off');
+  b.onclick=()=>{ musicOn=!musicOn; b.textContent='Music: '+(musicOn?'On':'Off'); try{ localStorage.setItem('arcade_music',musicOn?'1':'0'); }catch(e){}
+    (musicOn && isPlaying())?startMusic():stopMusic(); }; })();
+['keydown','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(musicOn && isPlaying()) startMusic(); },{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && isPlaying()) startMusic(); });
+
 // ---- leaderboard (saved on this device) ----
 const LB='lb_spellbound';
 function getLB(){ try{ return JSON.parse(localStorage.getItem(LB))||[]; }catch(e){ return []; } }
@@ -227,6 +251,7 @@ function clearCharge(){ foeCharging=false; el('banner').hidden=true; el('deathBt
 
 function playerAct(act){
   if(busy||done) return;
+  startMusic();
   // answer to the enemy's killing curse: Death Spell or Dodge
   if(foeCharging){
     if(act==='death' && deathLeft>0){ deathLeft=0; el('deathBtn').textContent='☠️ Death Spell (used)'; clearCharge();
@@ -282,7 +307,7 @@ function enemyTurn(){
 }
 
 function finish(win, text){
-  done=true; busy=false; refresh();
+  stopMusic(); done=true; busy=false; refresh();
   el('endTitle').textContent = win ? 'VICTORY!' : 'DEFEATED';
   el('endTitle').style.color = win ? 'var(--good)' : 'var(--bad)';
   el('endText').textContent = text;
