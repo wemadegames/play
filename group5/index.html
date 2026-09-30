@@ -8,30 +8,30 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
-  /* ===== Dodge the Lunch (Group 5) — reach the lunch lady, dodge her throws ===== */
+  /* ===== Dodge the Lunch (Group 5) — get past the lunch lady, room by room ===== */
   :root{ --bg:#241b16; --panel:#33271f; --text:#fff4e0; --muted:#c8b39c;
     --sauce:#e63b2e; --sauce-d:#b62518; --border:#120c08; }
   *{ box-sizing:border-box; }
   [hidden]{ display:none!important; }
   body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
     background:var(--bg); color:var(--text); font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
-  .wrap{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:10px; }
+  .wrap{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:8px; }
   .back{ align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:8px 10px 8px 0; font-size:12px; text-decoration:none; color:var(--muted); }
   .back:hover{ color:var(--sauce); }
   .hud{ display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:13px; }
   .hud b{ color:var(--sauce); } #power{ color:#7fd0ff; }
-  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px;
-    font-family:inherit; font-size:11px; padding:4px 8px; min-height:40px; cursor:pointer; }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:40px; cursor:pointer; }
+  #msg{ text-align:center; font-size:13px; min-height:18px; color:var(--sauce); }
   .stage{ position:relative; border:3px solid var(--border); border-radius:8px; overflow:hidden; background:#cbb79a; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
 
   .overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:12px; padding:22px; text-align:center; }
   .overlay.hidden{ display:none; }
-  #start{ background:rgba(20,12,8,.45); }                 /* translucent so the lunch lady shows behind */
+  #start{ background:rgba(20,12,8,.45); }
   #pick, #over{ background:rgba(20,12,8,.92); }
   .overlay h1{ margin:0; font-family:"Press Start 2P",monospace; font-size:clamp(15px,5vw,20px); line-height:1.5; color:var(--sauce); text-shadow:2px 2px 0 #000; }
-  .overlay p{ margin:0; font-size:13px; color:var(--text); max-width:28ch; line-height:1.5; text-shadow:0 1px 2px #000; }
+  .overlay p{ margin:0; font-size:13px; color:var(--text); max-width:30ch; line-height:1.5; text-shadow:0 1px 2px #000; }
 
   .sauce{ position:relative; margin-top:6px; padding:14px 34px; min-height:48px; border:none; border-radius:12px;
     background:var(--sauce); color:#fff; font-family:"Press Start 2P",monospace; font-size:13px; cursor:pointer; box-shadow:0 5px 0 var(--sauce-d); }
@@ -66,12 +66,13 @@
   <a class="back" href="../index.html">&larr; Arcade</a>
   <div class="hud"><span>Score <b id="score">0</b></span><span>Lives <b id="lives">3</b></span><span id="power">&nbsp;</span>
     <button id="muteBtn" class="mute">Music: On</button></div>
+  <div id="msg">&nbsp;</div>
   <div class="stage">
     <canvas id="game"></canvas>
 
     <div id="start" class="overlay">
       <h1>Dodge the Lunch</h1>
-      <p>The lunch lady is angry. Run up to her, dodge the food she throws, and get her.</p>
+      <p>The lunch lady is angry. Dodge the food and get PAST her. Beat four rooms: cafeteria, classroom, gym, recess.</p>
       <button class="sauce" id="startBtn">PLAY</button>
     </div>
 
@@ -99,7 +100,7 @@
     <button class="u" data-dir="up">▲</button><button class="l" data-dir="left">◀</button>
     <button class="d" data-dir="down">▼</button><button class="r" data-dir="right">▶</button>
   </div>
-  <p class="foot">Arrow keys or WASD. Get up to the lunch lady.</p>
+  <p class="foot">Arrow keys or WASD. Walk past the lunch lady to clear each room.</p>
 </div>
 
 <script>
@@ -109,8 +110,16 @@ const cv=document.getElementById('game'), ctx=cv.getContext('2d');
 cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
 const el=id=>document.getElementById(id);
 const rnd=(a,b)=>a+Math.random()*(b-a);
-const LADY_X=W/2, LADY_FEET=70, THROW_Y=44;
-const START_Y=H-30, REACH_Y=112;
+const LADY_X=W/2, LADY_FEET=66, THROW_Y=42;
+const START_Y=H-30, TOP_REACH=54;                 // reaching the top = past the lunch lady
+
+// one room per round, each with its own look and the stuff she throws
+const LEVELS=[
+  { name:'Cafeteria', fa:'#d8c6a4', fb:'#cdba95', top:'#9a8f78', items:['pizza','burger','fries','donut'] },
+  { name:'Classroom', fa:'#cdbfa2', fb:'#c2b494', top:'#6e5c45', items:['book','pencil','eraser','paper'] },
+  { name:'Gym',       fa:'#e3c78c', fb:'#d8bb7c', top:'#b0894f', items:['basketball','dodgeball','cone','volleyball'] },
+  { name:'Recess',    fa:'#7fb86a', fb:'#6fa85a', top:'#9fd6ff', items:['frisbee','ball','waterballoon','cone'] },
+];
 
 /* ---------- drawn sprites (no emojis) ---------- */
 function drawKid(g, cx, feetY, who, walk){
@@ -124,8 +133,8 @@ function drawKid(g, cx, feetY, who, walk){
   g.fillStyle=shoe; g.fillRect(cx-6, feetY-2, 5,2); g.fillRect(cx+1, feetY-2, 5,2);
   if(who==='girl'){ g.fillStyle=cloth; g.beginPath(); g.moveTo(cx,feetY-27); g.lineTo(cx-10,feetY-11); g.lineTo(cx+10,feetY-11); g.closePath(); g.fill(); }
   else { g.fillStyle=cloth; g.fillRect(cx-7, feetY-27, 14, 16); }
-  g.fillStyle=skin; g.fillRect(cx-9, feetY-26, 3, 11); g.fillRect(cx+6, feetY-26, 3, 11);   // arms
-  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-32, 6, 0, 7); g.fill();                   // head
+  g.fillStyle=skin; g.fillRect(cx-9, feetY-26, 3, 11); g.fillRect(cx+6, feetY-26, 3, 11);
+  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-32, 6, 0, 7); g.fill();
   g.fillStyle=hair; g.beginPath(); g.arc(cx, feetY-34, 6, Math.PI, 0); g.fill();
   if(who==='girl'){ g.fillRect(cx-8, feetY-34, 2.5, 12); g.fillRect(cx+5, feetY-34, 2.5, 12); }
   g.fillStyle='#2a2a2a'; g.fillRect(cx-3, feetY-33, 1.6,1.6); g.fillRect(cx+2, feetY-33, 1.6,1.6);
@@ -133,56 +142,67 @@ function drawKid(g, cx, feetY, who, walk){
 function drawLady(g, cx, feetY, t, splat){
   const skin='#f0c090';
   const arm = Math.sin(t/140)*6;
-  g.fillStyle='#3a2a22'; g.fillRect(cx-13, feetY-6, 26, 6);                 // shoes/base
-  g.fillStyle='#c53030'; g.fillRect(cx-16, feetY-36, 32, 30);              // dress
-  g.fillStyle='#fbeee0'; g.fillRect(cx-11, feetY-32, 22, 24);             // apron
-  g.fillStyle=skin; g.fillRect(cx-21, feetY-34, 5, 15); g.fillRect(cx+16, feetY-34-arm, 5, 15); // arms
-  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-46, 10, 0, 7); g.fill();  // head
-  g.fillStyle='#fff'; g.beginPath(); g.ellipse(cx, feetY-57, 12, 8, 0, 0, 7); g.fill(); g.fillRect(cx-10, feetY-55, 20, 7); // hat
-  // angry face
+  g.fillStyle='#3a2a22'; g.fillRect(cx-13, feetY-6, 26, 6);
+  g.fillStyle='#c53030'; g.fillRect(cx-16, feetY-36, 32, 30);
+  g.fillStyle='#fbeee0'; g.fillRect(cx-11, feetY-32, 22, 24);
+  g.fillStyle=skin; g.fillRect(cx-21, feetY-34, 5, 15); g.fillRect(cx+16, feetY-34-arm, 5, 15);
+  g.fillStyle=skin; g.beginPath(); g.arc(cx, feetY-46, 10, 0, 7); g.fill();
+  g.fillStyle='#fff'; g.beginPath(); g.ellipse(cx, feetY-57, 12, 8, 0, 0, 7); g.fill(); g.fillRect(cx-10, feetY-55, 20, 7);
   g.strokeStyle='#7a4a2a'; g.lineWidth=2; g.beginPath();
   g.moveTo(cx-8,feetY-50); g.lineTo(cx-2,feetY-48); g.moveTo(cx+8,feetY-50); g.lineTo(cx+2,feetY-48); g.stroke();
   g.fillStyle='#2a2a2a'; g.fillRect(cx-5,feetY-47,2.4,2.4); g.fillRect(cx+3,feetY-47,2.4,2.4);
-  g.strokeStyle='#7a4a2a'; g.beginPath(); g.moveTo(cx-4,feetY-40); g.quadraticCurveTo(cx,feetY-43,cx+4,feetY-40); g.stroke(); // frown
-  if(splat){ g.fillStyle='rgba(230,59,46,.85)'; for(let i=0;i<7;i++){ g.beginPath(); g.arc(cx+rnd(-14,14), feetY-46+rnd(-12,12), rnd(2,5), 0,7); g.fill(); } }
+  g.strokeStyle='#7a4a2a'; g.beginPath(); g.moveTo(cx-4,feetY-40); g.quadraticCurveTo(cx,feetY-43,cx+4,feetY-40); g.stroke();
+  if(splat){ g.fillStyle='rgba(230,59,46,.85)'; for(let i=0;i<8;i++){ g.beginPath(); g.arc(cx+rnd(-14,14), feetY-46+rnd(-12,12), rnd(2,5), 0,7); g.fill(); } }
 }
-function drawFood(g,f){
-  g.save(); g.translate(f.x,f.y); g.rotate(f.rot); const s=9;
-  if(f.type==='pizza'){ g.fillStyle='#e8b24a'; g.beginPath(); g.moveTo(0,-s); g.lineTo(-s,s); g.lineTo(s,s); g.closePath(); g.fill();
-    g.fillStyle='#d33'; g.beginPath(); g.arc(-3,2,1.8,0,7); g.arc(3,4,1.8,0,7); g.fill(); }
-  else if(f.type==='burger'){ g.fillStyle='#e0a55a'; g.fillRect(-s,-s+2,2*s,5); g.fillRect(-s,s-4,2*s,4);
-    g.fillStyle='#7a4a2a'; g.fillRect(-s,-1,2*s,4); g.fillStyle='#5ad06a'; g.fillRect(-s,3,2*s,2); }
-  else if(f.type==='fries'){ g.fillStyle='#d33'; g.fillRect(-6,0,12,s+1); g.fillStyle='#ffd23f'; for(let i=-4;i<=4;i+=3) g.fillRect(i,-s+1,2,s+1); }
-  else { g.fillStyle='#ff9ec9'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.fillStyle='#cbb79a'; g.beginPath(); g.arc(0,0,3,0,7); g.fill(); }
+function drawItem(g,it){
+  g.save(); g.translate(it.x,it.y); g.rotate(it.rot); const s=9;
+  switch(it.type){
+    case 'pizza': g.fillStyle='#e8b24a'; g.beginPath(); g.moveTo(0,-s); g.lineTo(-s,s); g.lineTo(s,s); g.closePath(); g.fill();
+      g.fillStyle='#d33'; g.beginPath(); g.arc(-3,2,1.8,0,7); g.arc(3,4,1.8,0,7); g.fill(); break;
+    case 'burger': g.fillStyle='#e0a55a'; g.fillRect(-s,-s+2,2*s,5); g.fillRect(-s,s-4,2*s,4);
+      g.fillStyle='#7a4a2a'; g.fillRect(-s,-1,2*s,4); g.fillStyle='#5ad06a'; g.fillRect(-s,3,2*s,2); break;
+    case 'fries': g.fillStyle='#d33'; g.fillRect(-6,0,12,s+1); g.fillStyle='#ffd23f'; for(let i=-4;i<=4;i+=3) g.fillRect(i,-s+1,2,s+1); break;
+    case 'donut': g.fillStyle='#ff9ec9'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.arc(0,0,3,0,7); g.fill(); break;
+    case 'book': g.fillStyle='#3a7bd5'; g.fillRect(-s,-7,2*s,14); g.fillStyle='#fff'; g.fillRect(s-3,-6,3,12); g.fillStyle='rgba(255,255,255,.7)'; g.fillRect(-s+2,-5,6,2); break;
+    case 'pencil': g.fillStyle='#f0b429'; g.fillRect(-2,-s+3,4,2*s-6); g.fillStyle='#e8a0b0'; g.fillRect(-2,s-3,4,3);
+      g.fillStyle='#caa'; g.beginPath(); g.moveTo(-2,-s+3); g.lineTo(2,-s+3); g.lineTo(0,-s-1); g.closePath(); g.fill(); break;
+    case 'eraser': g.fillStyle='#ff9ec9'; g.fillRect(-7,-4,14,8); g.fillStyle='#fff'; g.fillRect(-7,-4,4,8); break;
+    case 'paper': g.fillStyle='#eee'; g.beginPath(); for(let i=0;i<8;i++){ const a=i/8*6.28, r=7+(i%2?2:-1); g.lineTo(Math.cos(a)*r,Math.sin(a)*r); } g.closePath(); g.fill(); g.strokeStyle='#bbb'; g.stroke(); break;
+    case 'basketball': g.fillStyle='#e8862a'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.strokeStyle='#5a3010'; g.lineWidth=1; g.beginPath(); g.moveTo(-s,0); g.lineTo(s,0); g.moveTo(0,-s); g.lineTo(0,s); g.stroke(); break;
+    case 'dodgeball': g.fillStyle='#e23b2e'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.fillStyle='rgba(255,255,255,.5)'; g.beginPath(); g.arc(-3,-3,2.5,0,7); g.fill(); break;
+    case 'volleyball': g.fillStyle='#f4f4f4'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.strokeStyle='#89a'; g.lineWidth=1; g.beginPath(); g.arc(0,0,s-1,0.4,2.2); g.stroke(); break;
+    case 'cone': g.fillStyle='#f0862a'; g.beginPath(); g.moveTo(0,-s); g.lineTo(-s+1,s); g.lineTo(s-1,s); g.closePath(); g.fill(); g.fillStyle='#fff'; g.fillRect(-s+3,1,2*s-6,3); break;
+    case 'frisbee': g.fillStyle='#4fd0a0'; g.beginPath(); g.ellipse(0,0,s+1,4,0,0,7); g.fill(); g.strokeStyle='#2fa07a'; g.stroke(); break;
+    case 'ball': g.fillStyle='#ffd23f'; g.beginPath(); g.arc(0,0,s,0,7); g.fill(); g.strokeStyle='#c9a21f'; g.beginPath(); g.moveTo(-s,0); g.lineTo(s,0); g.stroke(); break;
+    case 'waterballoon': g.fillStyle='#3aa0ff'; g.beginPath(); g.moveTo(0,-s); g.quadraticCurveTo(s,-2,0,s); g.quadraticCurveTo(-s,-2,0,-s); g.fill();
+      g.fillStyle='rgba(255,255,255,.5)'; g.beginPath(); g.arc(-3,-2,2,0,7); g.fill(); break;
+  }
   g.restore();
 }
 function drawDrink(g,d){ g.save(); g.translate(d.x,d.y);
   g.fillStyle='#1a8fd0'; g.fillRect(-6,-9,12,18); g.fillStyle='#ffd23f'; g.fillRect(-6,-2,12,4);
   g.fillStyle='rgba(255,255,255,.6)'; g.fillRect(-4,-9,2,18); g.restore(); }
 
-/* ---------- background music (Web Audio, competitive loop) ---------- */
+/* ---------- background music (Web Audio, shared Music toggle) ---------- */
 let actx=null, musicOn=true, schedTimer=null, mstep=0, nextT=0;
-const TEMPO=152, EIGHTH=60/TEMPO/2;
-const BASS=[110,110,131,165, 110,98,131,165];
-const LEAD=[440,523,659,523, 587,523,440,659];
-function tone(freq,dur,type,vol,when){ if(!freq||!actx) return; const o=actx.createOscillator(), g=actx.createGain();
-  o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(0.0001,when); g.gain.linearRampToValueAtTime(vol,when+0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001,when+dur); o.connect(g).connect(actx.destination); o.start(when); o.stop(when+dur+0.02); }
-function kick(when){ if(!actx) return; const o=actx.createOscillator(), g=actx.createGain(); o.type='sine';
-  o.frequency.setValueAtTime(150,when); o.frequency.exponentialRampToValueAtTime(45,when+0.11);
-  g.gain.setValueAtTime(0.45,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.14); o.connect(g).connect(actx.destination); o.start(when); o.stop(when+0.15); }
-function scheduler(){ while(nextT < actx.currentTime + 0.12){ const s=mstep%8;
-  if(s%2===0) kick(nextT); tone(BASS[s], EIGHTH*1.6,'triangle',0.16,nextT); tone(LEAD[s], EIGHTH*0.8,'square',0.06,nextT);
-  nextT += EIGHTH; mstep++; } }
-function startMusic(){ if(!musicOn) return; try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){ return; }
-  if(schedTimer) return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(scheduler,25); }
+const MEIGHTH=60/152/2, MBASS=[110,110,131,165,110,98,131,165], MLEAD=[440,523,659,523,587,523,440,659];
+function mtone(f,d,ty,v,w){ if(!f||!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type=ty; o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,w); g.gain.linearRampToValueAtTime(v,w+0.01); g.gain.exponentialRampToValueAtTime(0.0001,w+d);
+  o.connect(g).connect(actx.destination); o.start(w); o.stop(w+d+0.02); }
+function mkick(w){ if(!actx)return; const o=actx.createOscillator(),g=actx.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(150,w); o.frequency.exponentialRampToValueAtTime(45,w+0.11);
+  g.gain.setValueAtTime(0.4,w); g.gain.exponentialRampToValueAtTime(0.0001,w+0.14); o.connect(g).connect(actx.destination); o.start(w); o.stop(w+0.15); }
+function msched(){ while(nextT<actx.currentTime+0.12){ const s=mstep%8; if(s%2===0)mkick(nextT);
+  mtone(MBASS[s],MEIGHTH*1.6,'triangle',0.15,nextT); mtone(MLEAD[s],MEIGHTH*0.8,'square',0.05,nextT); nextT+=MEIGHTH; mstep++; } }
+function startMusic(){ if(!musicOn)return; try{ if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+  if(schedTimer)return; mstep=0; nextT=actx.currentTime+0.1; schedTimer=setInterval(msched,25); }
 function stopMusic(){ if(schedTimer){ clearInterval(schedTimer); schedTimer=null; } if(actx){ try{ actx.suspend(); }catch(e){} } }
-const playing = () => state==='play' || state==='throwing';
-try{ if(localStorage.getItem('arcade_music')==='0'){ musicOn=false; el('muteBtn').textContent='Music: Off'; } }catch(e){}
-el('muteBtn').onclick=()=>{ musicOn=!musicOn; el('muteBtn').textContent='Music: '+(musicOn?'On':'Off');
-  try{ localStorage.setItem('arcade_music', musicOn?'1':'0'); }catch(e){}
-  (musicOn && playing()) ? startMusic() : stopMusic(); };
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && playing()) startMusic(); });
+const playingNow = () => state==='play' || state==='cut';
+try{ if(localStorage.getItem('arcade_music')==='0') musicOn=false; }catch(e){}
+(function(){ const b=el('muteBtn'); if(!b)return; b.textContent='Music: '+(musicOn?'On':'Off');
+  b.onclick=()=>{ musicOn=!musicOn; b.textContent='Music: '+(musicOn?'On':'Off'); try{ localStorage.setItem('arcade_music',musicOn?'1':'0'); }catch(e){}
+    (musicOn && playingNow())?startMusic():stopMusic(); }; })();
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicOn && playingNow()) startMusic(); });
 
 /* ---------- leaderboard ---------- */
 const LB='lb_dodgelunch';
@@ -195,16 +215,19 @@ function renderLB(){ const a=getLB(); el('lbPanel').innerHTML='<div class="lbh">
 const fitsTop5=sc=>{ const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
 
 /* ---------- state ---------- */
-let state='start', who='boy', player, foods, drinks, lives, elapsed, spawnT, drinkT, shieldUntil, invulnUntil,
-    last=0, walk=0, pendingScore=0, saved=false, throwFood=null, throwUntil=0, ladyT=0;
+let state='start', who='boy', level=0, player, items, drinks, lives, score, elapsed, spawnT, drinkT,
+    shieldUntil, invulnUntil, last=0, walk=0, pendingScore=0, saved=false, throwItem=null, cutUntil=0, ladyT=0;
 
-function reset(){
-  player={ x:W/2, y:START_Y }; foods=[]; drinks=[]; lives=3; elapsed=0; spawnT=0.6; drinkT=7;
-  shieldUntil=0; invulnUntil=0; throwFood=null; updateHud();
+function startLevel(){
+  player={ x:W/2, y:START_Y }; items=[]; drinks=[]; elapsed=0; spawnT=1.1; drinkT=7;
+  shieldUntil=0; invulnUntil=0; throwItem=null;
+  el('msg').textContent = 'Room '+(level+1)+'/4: '+LEVELS[level].name;
+  updateHud();
 }
-function updateHud(){ el('lives').textContent=Math.max(0,lives);
-  el('score').textContent=(state==='play'||state==='throwing')? Math.max(0,Math.floor(520-elapsed*15)) : Math.floor(pendingScore); }
-const prox = () => Math.max(0, Math.min(1, (START_Y - player.y)/(START_Y - REACH_Y)));
+function newGame(){ level=0; lives=3; score=0; startLevel(); state='play'; last=performance.now(); startMusic(); }
+function updateHud(){ el('lives').textContent=Math.max(0,lives); el('score').textContent=Math.floor(score); }
+const prox = () => Math.max(0, Math.min(1, (START_Y - player.y)/(START_Y - TOP_REACH)));
+const pickItem = () => LEVELS[level].items[Math.floor(rnd(0,LEVELS[level].items.length))];
 
 /* ---------- input ---------- */
 const keys=new Set();
@@ -215,98 +238,101 @@ document.querySelectorAll('.pad button').forEach(b=>{ const d=b.dataset.dir;
   const dn=e=>{ e.preventDefault(); keys.add(d); }, up=e=>{ e.preventDefault(); keys.delete(d); };
   b.addEventListener('touchstart',dn,{passive:false}); b.addEventListener('touchend',up); b.addEventListener('touchcancel',up);
   b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up); b.addEventListener('mouseleave',up); });
+['keydown','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(musicOn && playingNow()) startMusic(); },{passive:true}));
 
 /* ---------- flow ---------- */
 el('startBtn').onclick=()=>{ el('start').classList.add('hidden'); el('pick').classList.remove('hidden'); };
-document.querySelectorAll('.pbtn').forEach(b=> b.onclick=()=>{ who=b.dataset.who; el('pick').classList.add('hidden');
-  reset(); state='play'; last=performance.now(); startMusic(); });
+document.querySelectorAll('.pbtn').forEach(b=> b.onclick=()=>{ who=b.dataset.who; el('pick').classList.add('hidden'); newGame(); });
 el('againBtn').onclick=()=>{ el('over').classList.add('hidden'); el('pick').classList.remove('hidden'); };
 el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim(), pendingScore); saved=true;
   el('saveBtn').disabled=true; el('saveBtn').textContent='✓'; el('nameIn').disabled=true; renderLB(); };
 addEventListener('keydown',e=>{ if(state==='over' && e.key==='Enter' && !(e.target&&e.target.tagName==='INPUT')) el('againBtn').click(); });
 
-function endGame(win){
+function winLevel(){                                  // reached the top, past the lunch lady
+  score += 200 + Math.max(0, 250 - Math.floor(elapsed*12));
+  state='cut'; cutUntil=performance.now()+1100;
+  throwItem={ x:player.x, y:player.y-16, vy:-360, rot:0, type:pickItem() };
+  el('msg').textContent = (level<LEVELS.length-1) ? 'Past her! Next: '+LEVELS[level+1].name : 'Past her! Last room done!';
+  updateHud();
+}
+function endGame(won){
   stopMusic(); state='over';
-  pendingScore = win ? Math.max(60, Math.floor(520 - elapsed*15)) + lives*90 : 0;
+  pendingScore = Math.floor(score) + (won?400:0) + lives*60;
   saved=false; el('saveBtn').disabled=false; el('saveBtn').textContent='Save'; el('nameIn').disabled=false; el('nameIn').value='';
-  el('overTitle').textContent = win ? 'You got her!' : 'Splat!';
-  el('overText').textContent = win ? `You reached the lunch lady and let her have it. Score ${pendingScore}.`
-                                   : `The lunch lady wore you down. She wins this round.`;
-  const top = win && fitsTop5(pendingScore); el('saveRow').hidden=!top; renderLB();
+  el('overTitle').textContent = won ? 'You made it!' : 'Splat!';
+  el('overText').textContent = won ? `You got past the lunch lady in all four rooms. Score ${pendingScore}.`
+                                   : `She wore you down in the ${LEVELS[level].name}. Score ${pendingScore}.`;
+  const top = fitsTop5(pendingScore); el('saveRow').hidden=!top; renderLB();
   el('over').classList.remove('hidden');
 }
 
 /* ---------- update ---------- */
 function update(dt, now){
-  if(state==='throwing'){ if(throwFood){ throwFood.y += throwFood.vy*dt; throwFood.rot+=8*dt; } ladyT+=dt*300;
-    if(now>throwUntil) endGame(true); return; }
+  if(state==='cut'){ if(throwItem){ throwItem.y += throwItem.vy*dt; throwItem.rot+=8*dt; } ladyT+=dt*300;
+    if(now>cutUntil){ if(level<LEVELS.length-1){ level++; startLevel(); state='play'; } else endGame(true); }
+    return;
+  }
 
   elapsed += dt;
   const sp=3.0;
   if(keys.has('left')) player.x-=sp; if(keys.has('right')) player.x+=sp;
   if(keys.has('up')) player.y-=sp; if(keys.has('down')) player.y+=sp;
   player.x=Math.max(16,Math.min(W-16,player.x));
-  player.y=Math.max(REACH_Y,Math.min(START_Y+4,player.y));
+  player.y=Math.max(TOP_REACH-4,Math.min(START_Y+4,player.y));
   if(keys.size) walk+=dt*14;
   const pcy = player.y-16;
 
-  // reached the lunch lady -> throw food at her and win
-  if(player.y<=REACH_Y+2 && Math.abs(player.x-LADY_X)<46){
-    state='throwing'; throwUntil=now+950;
-    throwFood={ x:player.x, y:pcy, vy:-320, rot:0, type:'pizza' };
-    return;
-  }
+  if(player.y<=TOP_REACH){ return winLevel(); }        // walked past her -> clear the room
 
-  // the lunch lady throws, aimed at the player, faster the closer you are
-  const p=prox();
+  const p=prox(), dfac=1+level*0.22;                   // rooms get harder, and it speeds up near her
   spawnT-=dt;
-  if(spawnT<=0){ spawnT = 0.85 - p*0.45;
-    const speed = 115 + p*155;                      // average throw, ramps up near her
+  if(spawnT<=0){ spawnT = (0.9 - p*0.45)/dfac;
+    const speed = (105 + p*150)*dfac;
     const ang = Math.atan2(pcy-THROW_Y, player.x-LADY_X) + rnd(-0.22,0.22);
-    foods.push({ x:LADY_X+rnd(-10,10), y:THROW_Y+10, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
-      type:['pizza','burger','fries','donut'][Math.floor(rnd(0,4))], rot:rnd(0,6.28), spin:rnd(-6,6) }); }
+    items.push({ x:LADY_X+rnd(-10,10), y:THROW_Y+10, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
+      type:pickItem(), rot:rnd(0,6.28), spin:rnd(-6,6) }); }
   drinkT-=dt;
   if(drinkT<=0){ drinkT=rnd(7,11); drinks.push({ x:rnd(30,W-30), y:-16, vy:105 }); }
 
   const shielded = now<shieldUntil;
-  for(let i=foods.length-1;i>=0;i--){ const f=foods[i]; f.x+=f.vx*dt; f.y+=f.vy*dt; f.rot+=f.spin*dt;
-    if(f.x<-16||f.x>W+16||f.y>H+16){ foods.splice(i,1); continue; }
+  for(let i=items.length-1;i>=0;i--){ const f=items[i]; f.x+=f.vx*dt; f.y+=f.vy*dt; f.rot+=f.spin*dt;
+    if(f.x<-16||f.x>W+16||f.y>H+16){ items.splice(i,1); continue; }
     if(Math.hypot(f.x-player.x, f.y-pcy) < 15){
-      if(shielded){ foods.splice(i,1); continue; }
-      if(now>invulnUntil){ foods.splice(i,1); lives--; invulnUntil=now+1200; updateHud(); if(lives<=0){ return endGame(false); } }
+      if(shielded){ items.splice(i,1); continue; }
+      if(now>invulnUntil){ items.splice(i,1); lives--; invulnUntil=now+1200; updateHud(); if(lives<=0){ return endGame(false); } }
     }
   }
   for(let i=drinks.length-1;i>=0;i--){ const d=drinks[i]; d.y+=d.vy*dt;
     if(d.y>H+16){ drinks.splice(i,1); continue; }
     if(Math.hypot(d.x-player.x, d.y-pcy) < 17){ drinks.splice(i,1); shieldUntil=now+4500; } }
   el('power').innerHTML = now<shieldUntil ? 'Shield '+Math.ceil((shieldUntil-now)/1000)+'s' : '&nbsp;';
-  updateHud();
 }
 
 /* ---------- draw ---------- */
 function bg(){
-  for(let y=0;y<H;y+=24) for(let x=0;x<W;x+=24){ ctx.fillStyle=((x/24+y/24)%2)?'#d8c6a4':'#cdba95'; ctx.fillRect(x,y,24,24); }
-  ctx.fillStyle='#9a8f78'; ctx.fillRect(0,0,W,26);            // back wall trim
+  const L=LEVELS[level]||LEVELS[0];
+  for(let y=0;y<H;y+=24) for(let x=0;x<W;x+=24){ ctx.fillStyle=((x/24+y/24)%2)?L.fa:L.fb; ctx.fillRect(x,y,24,24); }
+  ctx.fillStyle=L.top; ctx.fillRect(0,0,W,26);
 }
 function draw(now){
   bg();
-  const splat = state==='throwing' && now>throwUntil-600;
+  const splat = state==='cut' && now>cutUntil-600;
   drawLady(ctx, LADY_X, LADY_FEET, ladyT+=1, splat);
   for(const d of drinks) drawDrink(ctx,d);
-  for(const f of foods) drawFood(ctx,f);
-  if(throwFood) drawFood(ctx, throwFood);
+  for(const f of items) drawItem(ctx,f);
+  if(throwItem) drawItem(ctx, throwItem);
   if(player && state!=='start'){
     const blink = now<invulnUntil && Math.floor(now/120)%2===0;
     if(now<shieldUntil){ ctx.beginPath(); ctx.arc(player.x,player.y-16,19,0,7); ctx.fillStyle='rgba(127,208,255,.28)'; ctx.fill(); }
     if(!blink) drawKid(ctx, player.x, player.y, who, walk);
   } else if(state==='start'){ drawKid(ctx, W/2, START_Y, 'boy', 0); }
 }
-function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state==='play'||state==='throwing') update(dt,ts); draw(ts); requestAnimationFrame(loop); }
+function loop(ts){ const dt=Math.min(0.05,(ts-last)/1000); last=ts; if(state==='play'||state==='cut') update(dt,ts); draw(ts); requestAnimationFrame(loop); }
 
 /* pick-screen previews + idle scene */
 drawKid(document.getElementById('pcvBoy').getContext('2d'), 28, 68, 'boy', 0);
 drawKid(document.getElementById('pcvGirl').getContext('2d'), 28, 68, 'girl', 0);
-reset(); player=null; requestAnimationFrame(loop); player={ x:W/2, y:START_Y };
+player={ x:W/2, y:START_Y }; requestAnimationFrame(loop);
 </script>
 </body>
 </html>
