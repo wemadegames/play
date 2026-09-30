@@ -25,7 +25,7 @@
   .back:hover{ color:var(--text); border-color:var(--muted); }
   .hud{ display:flex; justify-content:space-between; font-size:12px; }
   .hud b{ color:var(--accent); } .buf{ color:var(--buf); } .eag{ color:var(--eag); }
-  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:32px; cursor:pointer; }
+  .mute{ border:1px solid var(--border); background:var(--panel); color:var(--muted); border-radius:6px; font-family:inherit; font-size:11px; padding:4px 8px; min-height:40px; cursor:pointer; }
   #msg{ text-align:center; font-size:13px; min-height:18px; color:var(--accent); }
   .stage{ position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; background:#0c1a13; }
   canvas{ display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:none; }
@@ -66,8 +66,10 @@
   .dpad button:nth-child(3){ grid-column:2; grid-row:2; }
   .dpad button:nth-child(4){ grid-column:3; grid-row:2; }
 
-  /* mobile: side boards drop away, the top HUD keeps the score */
-  @media(max-width:768px){ .board{ display:none; } }
+  /* mobile: side boards drop away; cap the field height so the touch controls stay on screen */
+  @media(max-width:768px){ .board{ display:none; }
+    .stage{ display:flex; justify-content:center; }
+    canvas{ width:auto; max-width:100%; max-height:56vh; } }
   @media(min-width:769px){ .touch{ display:none; } }
 </style>
 </head>
