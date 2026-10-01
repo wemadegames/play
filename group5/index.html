@@ -215,7 +215,7 @@ function renderLB(){ const a=getLB(); el('lbPanel').innerHTML='<div class="lbh">
 const fitsTop5=sc=>{ const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.length-1].score); };
 
 /* ---------- state ---------- */
-let state='start', who='boy', level=0, player, items, drinks, lives, score, elapsed, spawnT, drinkT,
+let state='start', who='boy', level=0, player, items=[], drinks=[], lives, score, elapsed, spawnT, drinkT,
     shieldUntil, invulnUntil, last=0, walk=0, pendingScore=0, saved=false, throwItem=null, cutUntil=0, ladyT=0;
 
 function startLevel(){
