@@ -110,8 +110,9 @@ const cv=document.getElementById('game'), ctx=cv.getContext('2d');
 cv.width=W; cv.height=H; ctx.imageSmoothingEnabled=false;
 const el=id=>document.getElementById(id);
 const rnd=(a,b)=>a+Math.random()*(b-a);
-const LADY_X=W/2, LADY_FEET=66, THROW_Y=42;
+const LADY_FEET=66, THROW_Y=42;
 const START_Y=H-30, TOP_REACH=54;                 // reaching the top = past the lunch lady
+const GATE_Y=88;                                  // enter this top band and she can grab you
 
 // one room per round, each with its own look and the stuff she throws
 const LEVELS=[
@@ -216,12 +217,15 @@ const fitsTop5=sc=>{ const a=getLB(); return sc>0 && (a.length<5 || sc>a[a.lengt
 
 /* ---------- state ---------- */
 let state='start', who='boy', level=0, player, items=[], drinks=[], lives, score, elapsed, spawnT, drinkT,
-    shieldUntil, invulnUntil, last=0, walk=0, pendingScore=0, saved=false, throwItem=null, cutUntil=0, ladyT=0;
+    shieldUntil, invulnUntil, last=0, walk=0, pendingScore=0, saved=false, throwItem=null, cutUntil=0, ladyT=0,
+    ladyX=W/2, ladyDir=1, roomMsg='';
 
 function startLevel(){
-  player={ x:W/2, y:START_Y }; items=[]; drinks=[]; elapsed=0; spawnT=1.1; drinkT=7;
+  player={ x:W/2, y:START_Y }; items=[]; drinks=[]; elapsed=0; spawnT=0.5; drinkT=7;
   shieldUntil=0; invulnUntil=0; throwItem=null;
-  el('msg').textContent = 'Room '+(level+1)+'/4: '+LEVELS[level].name;
+  ladyX=rnd(60,W-60); ladyDir=Math.random()<.5?-1:1;
+  roomMsg='Room '+(level+1)+'/4: '+LEVELS[level].name;
+  el('msg').textContent=roomMsg;
   updateHud();
 }
 function newGame(){ level=0; lives=3; score=0; startLevel(); state='play'; last=performance.now(); startMusic(); }
@@ -249,7 +253,7 @@ el('saveBtn').onclick=()=>{ if(saved) return; addScore(el('nameIn').value.trim()
 addEventListener('keydown',e=>{ if(state==='over' && e.key==='Enter' && !(e.target&&e.target.tagName==='INPUT')) el('againBtn').click(); });
 
 function winLevel(){                                  // reached the top, past the lunch lady
-  score += 200 + Math.max(0, 250 - Math.floor(elapsed*12));
+  score += (150 + level*120) + Math.max(0, 200 - Math.floor(elapsed*10));
   state='cut'; cutUntil=performance.now()+1100;
   throwItem={ x:player.x, y:player.y-16, vy:-360, rot:0, type:pickItem() };
   el('msg').textContent = (level<LEVELS.length-1) ? 'Past her! Next: '+LEVELS[level+1].name : 'Past her! Last room done!';
@@ -282,15 +286,29 @@ function update(dt, now){
   if(keys.size) walk+=dt*14;
   const pcy = player.y-16;
 
-  if(player.y<=TOP_REACH){ return winLevel(); }        // walked past her -> clear the room
+  // the lunch lady patrols the top and blocks the way past; faster and wider each room
+  const ladySpeed=60+level*34, reach=24+level*6;
+  ladyX += ladyDir*ladySpeed*dt;
+  if(ladyX<40){ ladyX=40; ladyDir=1; } else if(ladyX>W-40){ ladyX=W-40; ladyDir=-1; }
+  if(player.y<=GATE_Y && now>invulnUntil && Math.abs(player.x-ladyX)<reach){
+    lives--; invulnUntil=now+1000; player.y=Math.min(START_Y, player.y+150); updateHud();
+    el('msg').textContent='Caught! Slip past when she steps aside.';
+    if(lives<=0){ return endGame(false); }
+  }
+  if(now>invulnUntil && el('msg').textContent!==roomMsg) el('msg').textContent=roomMsg;
 
-  const p=prox(), dfac=1+level*0.22;                   // rooms get harder, and it speeds up near her
+  if(player.y<=TOP_REACH){ return winLevel(); }        // slipped past her -> clear the room
+
+  const p=prox(), dfac=1+level*0.22;                   // more food, faster, the closer you get
   spawnT-=dt;
   if(spawnT<=0){ spawnT = (0.9 - p*0.45)/dfac;
-    const speed = (105 + p*150)*dfac;
-    const ang = Math.atan2(pcy-THROW_Y, player.x-LADY_X) + rnd(-0.22,0.22);
-    items.push({ x:LADY_X+rnd(-10,10), y:THROW_Y+10, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
-      type:pickItem(), rot:rnd(0,6.28), spin:rnd(-6,6) }); }
+    const volley=1+(level>=2?1:0);
+    for(let v=0; v<volley; v++){
+      const speed = (105 + p*150)*dfac;
+      const ang = Math.atan2(pcy-THROW_Y, player.x-ladyX) + rnd(-0.30,0.30);
+      items.push({ x:ladyX+rnd(-10,10), y:THROW_Y+10, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
+        type:pickItem(), rot:rnd(0,6.28), spin:rnd(-6,6) });
+    } }
   drinkT-=dt;
   if(drinkT<=0){ drinkT=rnd(7,11); drinks.push({ x:rnd(30,W-30), y:-16, vy:105 }); }
 
@@ -317,7 +335,7 @@ function bg(){
 function draw(now){
   bg();
   const splat = state==='cut' && now>cutUntil-600;
-  drawLady(ctx, LADY_X, LADY_FEET, ladyT+=1, splat);
+  drawLady(ctx, ladyX, LADY_FEET, ladyT+=1, splat);
   for(const d of drinks) drawDrink(ctx,d);
   for(const f of items) drawItem(ctx,f);
   if(throwItem) drawItem(ctx, throwItem);
