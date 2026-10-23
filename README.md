@@ -1,6 +1,6 @@
 # Class Arcade
 
-Four browser games designed by middle-school students and built with AI, then combined into one arcade menu. Pure HTML, CSS, and vanilla JavaScript. No build step, no backend.
+Six browser games designed by middle-school students and built with AI, then combined into one arcade menu. Pure HTML, CSS, and vanilla JavaScript. No build step, no backend.
 
 ## Games
 
@@ -10,6 +10,8 @@ Four browser games designed by middle-school students and built with AI, then co
 | 2 | Leave the Maze | `group2/` |
 | 3 | Spellbound Academy | `group3/` |
 | 4 | Football Fusion | `group4/` |
+| 5 | Dodge the Lunch | `group5/` |
+| 6 | Asteroid Blaster | `group6/` |
 
 ## Play locally
 
